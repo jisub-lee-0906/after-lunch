@@ -1,11 +1,13 @@
 import unittest
 from pathlib import Path
+from urllib.error import URLError
 
 from scripts.nationwide_dataset_runner import (
     NationwideRunConfig,
     build_output_paths,
     build_sample_stage_paths,
     compute_level_targets,
+    fetch_json_with_retry,
     should_stop_collecting,
 )
 
@@ -21,6 +23,33 @@ class NationwideDatasetRunnerTests(unittest.TestCase):
 
     def test_compute_level_targets_for_full_run_is_none(self):
         self.assertIsNone(compute_level_targets(None))
+
+    def test_fetch_json_with_retry_recovers_from_timeout(self):
+        calls = {"count": 0}
+
+        def flaky_fetch(**kwargs):
+            calls["count"] += 1
+            if calls["count"] < 3:
+                raise URLError(TimeoutError("timed out"))
+            return {"ok": True, "params": kwargs}
+
+        result = fetch_json_with_retry(flaky_fetch, retries=3, backoff_seconds=0, endpoint="mealServiceDietInfo", pIndex=1)
+
+        self.assertEqual(calls["count"], 3)
+        self.assertEqual(result["ok"], True)
+        self.assertEqual(result["params"]["endpoint"], "mealServiceDietInfo")
+
+    def test_fetch_json_with_retry_raises_after_exhausting_retries(self):
+        calls = {"count": 0}
+
+        def always_timeout(**kwargs):
+            calls["count"] += 1
+            raise URLError(TimeoutError("timed out"))
+
+        with self.assertRaises(URLError):
+            fetch_json_with_retry(always_timeout, retries=2, backoff_seconds=0, endpoint="schoolInfo", pIndex=1)
+
+        self.assertEqual(calls["count"], 3)
 
     def test_should_stop_collecting_only_after_all_targets_met(self):
         targets = {"초등학교": 2, "중학교": 1, "고등학교": 1}

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 import json
 import sys
+import time
 import urllib.parse
 import urllib.request
+from urllib.error import URLError
 
 if __package__ in {None, ''}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -78,6 +80,23 @@ def _fetch_json(api_key: str, endpoint: str, **params) -> dict:
         return json.loads(response.read().decode('utf-8'))
 
 
+def fetch_json_with_retry(fetch_fn: Callable[..., dict], *, retries: int = 3, backoff_seconds: int = 2, **kwargs) -> dict:
+    attempt = 0
+    while True:
+        try:
+            return fetch_fn(**kwargs)
+        except URLError as exc:
+            attempt += 1
+            if attempt > retries:
+                raise
+            reason = getattr(exc, 'reason', None)
+            if isinstance(reason, TimeoutError) or 'timed out' in str(reason).lower() or 'timed out' in str(exc).lower():
+                if backoff_seconds:
+                    time.sleep(backoff_seconds * attempt)
+                continue
+            raise
+
+
 def _extract_rows(payload: dict, key: str) -> list[dict]:
     rows: list[dict] = []
     for block in payload.get(key, []):
@@ -103,7 +122,7 @@ def run_sample_pipeline(config: NationwideRunConfig) -> dict:
 
     school_rows: list[dict] = []
     for page in range(1, 64):
-        school_rows.extend(_extract_rows(_fetch_json(api_key, 'schoolInfo', pIndex=page, pSize=200), 'schoolInfo'))
+        school_rows.extend(_extract_rows(fetch_json_with_retry(_fetch_json, api_key=api_key, endpoint='schoolInfo', pIndex=page, pSize=200), 'schoolInfo'))
         if config.sample_rows is not None and len(school_rows) >= 2500:
             break
 
@@ -132,9 +151,10 @@ def run_sample_pipeline(config: NationwideRunConfig) -> dict:
         level = school['SCHUL_KND_SC_NM']
         if targets is not None and collected_by_level[level] >= targets[level]:
             continue
-        payload = _fetch_json(
-            api_key,
-            'mealServiceDietInfo',
+        payload = fetch_json_with_retry(
+            _fetch_json,
+            api_key=api_key,
+            endpoint='mealServiceDietInfo',
             pIndex=1,
             pSize=100,
             ATPT_OFCDC_SC_CODE=school['ATPT_OFCDC_SC_CODE'],
