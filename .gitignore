@@ -1,0 +1,32 @@
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Windows / Office temporary metadata
+~$*.xls*
+*.Zone.Identifier
+*:*Zone.Identifier
+
+# Generated datasets and pipeline outputs
+datasets/
+*.jsonl
+refined_lunch_data*.json
+high_confidence_seed*.json
+app_seed_deduped*.json
+*_quality_report.json
+*_report.json
+
+# Iterative analysis / verification notes generated during dataset experiments
+*_report_ko.md
+*_scope_recommendation_ko.md
+dataset_quality_review_and_plan_ko.md
+improved_refinement_progress_report_ko.md
+third_round_refinement_report_ko.md
+noisy_neis_cleanup_round4_report_ko.md
+reduce_etc_method_round5_report_ko.md
+high_confidence_seed_report_ko.md
+app_seed_deduped_report_ko.md
+final_verification_2025_sample_report_ko.md
+nationwide_2025_scope_recommendation_ko.md
