@@ -254,18 +254,18 @@ export default function Page() {
         </section>
 
         {!selectedSchool ? (
-          <section className="surface-card px-6 py-6 text-center">
+          <section className="status-card">
             <p className="text-body-muted text-[1rem] leading-7">학교를 검색해 설정해보세요.</p>
           </section>
         ) : isLoadingLunch ? (
-          <section className="surface-card px-6 py-6 text-center">
+          <section className="status-card">
             <div className="flex items-center justify-center gap-3 text-[var(--text-body)]">
               <LoaderCircle className="h-4.5 w-4.5 animate-spin" />
               <p className="text-[1rem] leading-7">오늘 급식을 불러오는 중이에요.</p>
             </div>
           </section>
         ) : lunchError ? (
-          <section className="surface-card px-6 py-6 text-center">
+          <section className="status-card">
             <p className="text-body-muted text-[1rem] leading-7">{lunchError || '오늘 급식을 찾지 못했어요.'}</p>
           </section>
         ) : lunchData && lunchSummary ? (
@@ -280,13 +280,13 @@ export default function Page() {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="surface-card px-4 py-4">
+                <div className="metric-card">
                   <p className="text-caption">식단 밀도</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text-strong)]">
                     {lunchSummary.isHeavy ? '든든한 구성' : '가벼운 구성'}
                   </p>
                 </div>
-                <div className="surface-card px-4 py-4">
+                <div className="metric-card">
                   <p className="text-caption">식단 요약</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[var(--text-strong)]">
                     {lunchSummary.hasFried || lunchSummary.hasSpicy ? '기름짐과 매콤함' : '균형 잡힌 구성'}
@@ -302,7 +302,7 @@ export default function Page() {
 
                 <div className="space-y-3">
                   {lunchItems.map((item) => (
-                    <div key={item} className="surface-subtle px-4 py-3">
+                    <div key={item} className="list-row">
                       <p className="text-[1.04rem] font-medium leading-7 tracking-[-0.02em] text-[var(--text-strong)]">{item}</p>
                     </div>
                   ))}
@@ -358,7 +358,7 @@ export default function Page() {
                           href={recommendation.recipeUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-auto inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--surface-strong)] px-4 text-sm font-medium text-white transition hover:opacity-95"
+                          className="primary-action mt-auto"
                         >
                           레시피 보기
                           <ChevronRight className="ml-2 h-4 w-4" />
@@ -389,7 +389,7 @@ export default function Page() {
 
               <p className="mt-3 section-description">검색으로 학교를 바꿔보세요.</p>
 
-              <div className="mt-4 flex items-center gap-3 rounded-[22px] border border-[var(--border-soft)] bg-[var(--surface-subtle)] px-4 py-3">
+              <div className="mt-4 field-shell">
                 <Search className="h-4.5 w-4.5 text-[var(--text-muted)]" />
                 <input
                   value={schoolQuery}
@@ -418,10 +418,8 @@ export default function Page() {
                         setSchoolQuery('');
                       }}
                       className={cn(
-                        'flex w-full items-center justify-between rounded-[22px] border px-4 py-4 text-left transition',
-                        isSelected
-                          ? 'border-[var(--surface-strong)] bg-[var(--surface-subtle)]'
-                          : 'border-[var(--border-soft)] bg-white hover:bg-[var(--surface-subtle)]',
+                        'option-card',
+                        isSelected && 'is-selected',
                       )}
                     >
                       <div className="space-y-1">
