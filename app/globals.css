@@ -150,6 +150,25 @@
     padding: 1rem;
   }
 
+  .bridge-card {
+    padding: 1.5rem;
+  }
+
+  .bridge-card__content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.25rem 0 0;
+  }
+
+  .bridge-card__quote {
+    color: var(--text-body);
+    font-size: 1rem;
+    line-height: 1.8rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
   .list-row {
     background: var(--surface-subtle);
     border-radius: 20px;

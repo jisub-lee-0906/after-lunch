@@ -57,10 +57,10 @@ class SchoolBackendContractTests(unittest.TestCase):
             '오늘 급식을 불러오는 중이에요.',
             '추천을 불러오는 중이에요.',
             '오늘 급식 정보가 없어요.',
-            '다른 날짜를 확인하거나 바로 저녁 추천을 이어볼 수 있어요.',
-            '어제 급식 보기',
-            '내일 급식 보기',
+            '어제 보기',
+            '내일 보기',
             '학교 다시 선택',
+            'bridgeComment',
         ]
         for item in required_strings:
             self.assertIn(item, content)

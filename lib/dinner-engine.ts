@@ -154,30 +154,30 @@ export function summarizeLunchSignals(menuItems: string[]): LunchSignals {
 
 function buildBridgeComment(summary: LunchSignals) {
   if (summary.hasFried && summary.hasSpicy) {
-    return '점심에 기름지고 자극적인 메뉴들이 나왔었으니, 저녁은 더 편안하고 균형 잡힌 메뉴들을 추천드립니다.';
+    return '점심이 기름지고 자극적이었어서, 저녁은 더 편안한 메뉴들로 골랐어요.';
   }
 
   if (summary.hasFried) {
-    return '점심에 튀김과 같이 무게감 있는 메뉴들이 나왔었으니, 저녁은 조금 더 담백한 메뉴들을 추천드립니다.';
+    return '점심이 조금 무거웠어서, 저녁은 더 담백한 메뉴들로 골랐어요.';
   }
 
   if (summary.hasSpicy) {
-    return '점심에 매콤한 메뉴들이 나왔었으니, 저녁은 자극을 낮춘 편안한 메뉴들을 추천드립니다.';
+    return '점심이 매콤했어서, 저녁은 자극을 낮춘 메뉴들로 골랐어요.';
   }
 
   if (summary.mealType === 'starch-heavy') {
-    return '점심에 탄수화물 비중이 높은 메뉴들이 나왔었으니, 저녁은 단백질 균형을 보완하는 메뉴들을 추천드립니다.';
+    return '점심이 탄수화물 중심이었어서, 저녁은 단백질 균형을 더한 메뉴들로 골랐어요.';
   }
 
   if (summary.proteinPreference === 'diverse-protein') {
-    return '점심에 여러 단백질군이 함께 나온 식단이었으니, 저녁은 부담 없이 이어갈 수 있는 균형 잡힌 메뉴들을 추천드립니다.';
+    return '점심 구성이 든든했어서, 저녁은 부담 없이 이어갈 메뉴들로 골랐어요.';
   }
 
   if (summary.isHeavy) {
-    return '점심에 든든한 메뉴들이 나왔었으니, 저녁은 무게를 조금 덜어낸 메뉴들을 추천드립니다.';
+    return '점심이 든든했어서, 저녁은 무게를 덜어낸 메뉴들로 골랐어요.';
   }
 
-  return '점심 식단이 비교적 균형 잡혀 있었으니, 저녁도 가볍게 이어갈 수 있는 메뉴들을 추천드립니다.';
+  return '점심 흐름에 맞춰 가볍게 이어갈 메뉴들로 골랐어요.';
 }
 
 function getLunchTags(summary: LunchSignals) {
@@ -207,6 +207,48 @@ function proteinDiversityBonus(dinner: ProductionDinner, summary: LunchSignals) 
   }
 
   return dinnerProteinTags.length > 0 ? 3 : 0;
+}
+
+function classifyDinnerCategory(dinner: ProductionDinner) {
+  const dinnerText = `${dinner.display_name} ${dinner.canonical_name} ${dinner.main_dishes.join(' ')}`;
+  if (SOUP_KEYWORDS.some((keyword) => dinnerText.includes(keyword))) return 'soup';
+  if (dinner.attributes.spicy) return 'spicy';
+  if (dinner.attributes.fried) return 'fried';
+  if (starchHeavyKeywords.some((keyword) => dinnerText.includes(keyword))) return 'starch';
+  return 'balanced';
+}
+
+function selectDiverseRecommendations(
+  scoredCandidates: Array<{ dinner: ProductionDinner; score: number }>,
+  limit: number,
+  candidatePoolSize = 9,
+) {
+  // 추천 다양성: 상위권 안정성을 유지하면서 단백질군/메뉴 타입 반복은 완만하게 줄인다.
+  const shortlisted = scoredCandidates.slice(0, candidatePoolSize);
+  const selected: Array<{ dinner: ProductionDinner; score: number }> = [];
+  const seenProteinTags = new Set<string>();
+  const seenMealCategories = new Set<string>();
+
+  for (const candidate of shortlisted) {
+    if (selected.length >= limit) break;
+    const category = classifyDinnerCategory(candidate.dinner);
+    const hasNewProtein = candidate.dinner.protein_tags.some((tag) => !seenProteinTags.has(tag));
+    const hasNewCategory = !seenMealCategories.has(category);
+
+    if (selected.length === 0 || hasNewProtein || hasNewCategory) {
+      selected.push(candidate);
+      candidate.dinner.protein_tags.forEach((tag) => seenProteinTags.add(tag));
+      seenMealCategories.add(category);
+    }
+  }
+
+  for (const candidate of shortlisted) {
+    if (selected.length >= limit) break;
+    if (selected.includes(candidate)) continue;
+    selected.push(candidate);
+  }
+
+  return selected;
 }
 
 function getRecommendationReason(dinner: ProductionDinner, summary: LunchSignals) {
@@ -297,17 +339,16 @@ export function scoreDinnerCandidate(dinner: ProductionDinner, summary: LunchSig
 }
 
 export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRecommendationPayload {
-  const recommendations = productionDataset
-    .filter((dinner) => dinner.quality.production_ready)
-    .sort((left, right) => {
-      if (right.popularity.occurrence_count !== left.popularity.occurrence_count) {
-        return right.popularity.occurrence_count - left.popularity.occurrence_count;
-      }
-      return left.nutrition.calories.avg - right.nutrition.calories.avg;
-    })
-    .filter((dinner, index, items) => items.findIndex((item) => item.canonical_name === dinner.canonical_name) === index)
-    .slice(0, limit)
-    .map((dinner, index) => ({
+  const recommendations = selectDiverseRecommendations(
+    productionDataset
+      .filter((dinner) => dinner.quality.production_ready)
+      .map((dinner) => ({ dinner, score: dinner.popularity.occurrence_count }))
+      .sort((left, right) => {
+        if (right.score !== left.score) return right.score - left.score;
+        return left.dinner.nutrition.calories.avg - right.dinner.nutrition.calories.avg;
+      }),
+    limit,
+  ).map(({ dinner, score }, index) => ({
       menuId: dinner.menu_id,
       displayName: dinner.display_name,
       canonicalName: dinner.canonical_name,
@@ -315,7 +356,7 @@ export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRec
       sideDishes: getRecommendedSideDishes(dinner),
       recipeUrl: buildRecipeSearchUrl(dinner),
       reason: index === 0 ? '점심 없이도 바로 보기 좋은 대표 메뉴예요.' : '급식 정보가 없는 날에도 무난하게 고르기 좋은 메뉴예요.',
-      score: dinner.popularity.occurrence_count,
+      score,
     } satisfies DinnerRecommendation));
 
   return {
@@ -326,18 +367,19 @@ export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRec
 
 export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecommendationPayload {
   const lunchSummary = summarizeLunchSignals(lunch.menuItems);
-  const recommendations = productionDataset
-    .map((dinner) => ({ dinner, score: scoreDinnerCandidate(dinner, lunchSummary) }))
-    .sort((left, right) => {
-      if (right.score !== left.score) return right.score - left.score;
-      if (right.dinner.popularity.occurrence_count !== left.dinner.popularity.occurrence_count) {
-        return right.dinner.popularity.occurrence_count - left.dinner.popularity.occurrence_count;
-      }
-      return left.dinner.nutrition.calories.avg - right.dinner.nutrition.calories.avg;
-    })
-    .filter(({ dinner }, index, items) => items.findIndex((item) => item.dinner.canonical_name === dinner.canonical_name) === index)
-    .slice(0, 3)
-    .map(({ dinner, score }) => ({
+  const recommendations = selectDiverseRecommendations(
+    productionDataset
+      .map((dinner) => ({ dinner, score: scoreDinnerCandidate(dinner, lunchSummary) }))
+      .sort((left, right) => {
+        if (right.score !== left.score) return right.score - left.score;
+        if (right.dinner.popularity.occurrence_count !== left.dinner.popularity.occurrence_count) {
+          return right.dinner.popularity.occurrence_count - left.dinner.popularity.occurrence_count;
+        }
+        return left.dinner.nutrition.calories.avg - right.dinner.nutrition.calories.avg;
+      })
+      .filter(({ dinner }, index, items) => items.findIndex((item) => item.dinner.canonical_name === dinner.canonical_name) === index),
+    3,
+  ).map(({ dinner, score }) => ({
       menuId: dinner.menu_id,
       displayName: dinner.display_name,
       canonicalName: dinner.canonical_name,

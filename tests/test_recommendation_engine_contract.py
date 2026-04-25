@@ -31,6 +31,10 @@ class RecommendationEngineContractTests(unittest.TestCase):
             'starchHeavyKeywords',
             'heartySoupKeywords',
             'proteinDiversityBonus',
+            'selectDiverseRecommendations',
+            'seenProteinTags',
+            'seenMealCategories',
+            'candidatePoolSize',
             'dinner.protein_tags',
             'fetchSchoolLunch',
             'NextResponse.json',
@@ -60,10 +64,12 @@ class RecommendationEngineContractTests(unittest.TestCase):
             '점심 없이 저녁 추천 보기',
             '오늘 급식 정보가 없어요.',
             '추천을 불러오는 중이에요.',
-            '`${selectedDayLabel} 점심을 바탕으로 고른 메뉴예요.`',
-            '점심 없이도 바로 볼 수 있는 저녁 메뉴예요.',
-            '어울리는 반찬',
             'schoolName',
+            'bridge-card',
+            'bridgeComment',
+            '메뉴 추천',
+            '어제 보기',
+            '내일 보기',
         ]
         for item in required_strings:
             self.assertIn(item, content)

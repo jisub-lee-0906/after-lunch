@@ -371,7 +371,6 @@ export default function Page() {
               <Card className="space-y-6 p-6">
                 <div className="section-header border-b border-slate-100 pb-4">
                   <p className="text-kicker">급식 메뉴</p>
-                  <p className="text-caption">식단 요약</p>
                 </div>
 
                 <div className="space-y-3">
@@ -389,13 +388,6 @@ export default function Page() {
                     </Badge>
                   ))}
                 </div>
-              </Card>
-
-              <Card className="p-6">
-                <CardContent className="space-y-2 p-0">
-                  <p className="text-kicker">식단 요약 기준</p>
-                  <p className="text-base leading-7 text-body-muted">{bridgeComment}</p>
-                </CardContent>
               </Card>
             </section>
 
@@ -417,7 +409,11 @@ export default function Page() {
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  <p className="section-description px-1">옆으로 넘겨 더 보기</p>
+                  <Card className="bridge-card">
+                    <div className="bridge-card__content">
+                      <p className="bridge-card__quote">“{bridgeComment}”</p>
+                    </div>
+                  </Card>
                   <div className="recommendation-scroller overflow-x-auto">
                     <div className="recommendation-track flex snap-x snap-mandatory gap-4 pr-6">
                       {recommendations.map((recommendation) => (
