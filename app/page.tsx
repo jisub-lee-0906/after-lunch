@@ -338,34 +338,39 @@ export default function Page() {
                 </Card>
               ) : (
                 <div className="space-y-3">
-                  {recommendations.map((recommendation) => (
-                    <Card key={recommendation.menuId} className="rounded-[32px]">
-                      <CardContent className="flex h-full flex-col gap-4 p-5">
-                        <div className="space-y-2.5">
-                          <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-[var(--text-strong)]">{recommendation.displayName}</p>
-                          <p className="text-caption">어울리는 반찬</p>
-                        </div>
+                  <p className="section-description px-1">옆으로 넘겨 더 보기</p>
+                  <div className="overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex snap-x snap-mandatory gap-4 pr-6">
+                      {recommendations.map((recommendation) => (
+                        <Card key={recommendation.menuId} className="w-[88%] min-w-[320px] max-w-[360px] snap-start rounded-[32px]">
+                          <CardContent className="flex h-full flex-col gap-5 p-6">
+                            <div className="space-y-3">
+                              <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-[var(--text-strong)]">{recommendation.displayName}</p>
+                              <p className="text-caption">어울리는 반찬</p>
+                            </div>
 
-                        <div className="flex flex-wrap gap-2 text-sm text-[var(--text-body)]">
-                          {recommendation.sideDishes.map((item) => (
-                            <span key={item} className="meta-chip px-3 py-1">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
+                            <div className="flex flex-wrap gap-2.5 text-sm text-[var(--text-body)]">
+                              {recommendation.sideDishes.map((item) => (
+                                <span key={item} className="meta-chip px-3 py-1.5">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
 
-                        <a
-                          href={recommendation.recipeUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="primary-action mt-auto"
-                        >
-                          레시피 보기
-                          <ChevronRight className="ml-2 h-4 w-4" />
-                        </a>
-                      </CardContent>
-                    </Card>
-                  ))}
+                            <a
+                              href={recommendation.recipeUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="primary-action mt-auto"
+                            >
+                              레시피 보기
+                              <ChevronRight className="ml-2 h-4 w-4" />
+                            </a>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </section>
