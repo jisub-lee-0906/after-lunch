@@ -15,7 +15,9 @@ class MobileMainPageContractTests(unittest.TestCase):
         combined_content = content + '\n' + engine_path.read_text(encoding='utf-8')
 
         required_strings = [
-            '오늘의 급식',
+            'selectedDayLabel',
+            "`${selectedDayLabel} 급식`",
+            "`${selectedDayLabel} 저녁`",
             '점심 메뉴',
             '급식 메뉴',
             '식단 요약',
@@ -32,12 +34,13 @@ class MobileMainPageContractTests(unittest.TestCase):
             '오늘 점심을 바탕으로 고른 메뉴예요.',
             '추천을 불러오는 중이에요.',
             '어제',
-            '준비 난이도 낮음',
             'overflow-x-auto',
             'snap-x snap-mandatory',
+            'min-w-[272px]',
+            'max-w-[300px]',
+            'pr-2',
             'useState',
             'Settings',
-            'Clock3',
             'surface-card',
             'surface-subtle',
             'text-kicker',
@@ -46,14 +49,15 @@ class MobileMainPageContractTests(unittest.TestCase):
             'pill-subtle',
             'meta-chip',
             'section-description',
-            'difficulty-badge',
-            'difficulty-icon',
-            'difficulty-label',
             'icon-button',
             'setRecommendations',
             'recommendationError',
             'isLoadingRecommendations',
             'buildDinnerRecommendationPayload',
+            'LOCAL_STORAGE_SELECTED_SCHOOL_KEY',
+            'window.localStorage.setItem',
+            'JSON.parse',
+            'JSON.stringify',
         ]
         for item in required_strings:
             self.assertIn(item, combined_content)

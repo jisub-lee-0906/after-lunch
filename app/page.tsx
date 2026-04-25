@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronRight, Clock3, LoaderCircle, Search, Settings, X } from 'lucide-react';
+import { Check, ChevronRight, LoaderCircle, Search, Settings, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +50,7 @@ type RecommendationResponse = {
 };
 
 const dateTabs = [-1, 0, 1] as const;
+const LOCAL_STORAGE_SELECTED_SCHOOL_KEY = 'after-lunch:selected-school';
 
 function formatDateForApi(offsetDays: number) {
   const date = new Date();
@@ -64,12 +65,6 @@ function getDateLabel(offsetDays: number) {
   if (offsetDays === -1) return '어제';
   if (offsetDays === 1) return '내일';
   return '오늘';
-}
-
-function getDifficultyLabel(level: string) {
-  if (level === 'Low') return '준비 난이도 낮음';
-  if (level === 'Mid') return '준비 난이도 보통';
-  return '준비 난이도 높음';
 }
 
 export default function Page() {
@@ -91,6 +86,31 @@ export default function Page() {
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
   const selectedDate = useMemo(() => formatDateForApi(selectedDayOffset), [selectedDayOffset]);
+  const selectedDayLabel = useMemo(() => getDateLabel(selectedDayOffset), [selectedDayOffset]);
+
+  useEffect(() => {
+    try {
+      const storedValue = window.localStorage.getItem(LOCAL_STORAGE_SELECTED_SCHOOL_KEY);
+      if (!storedValue) return;
+      const parsedSchool = JSON.parse(storedValue) as SchoolSearchResult;
+      if (!parsedSchool?.officeCode || !parsedSchool?.schoolCode || !parsedSchool?.schoolName) {
+        window.localStorage.removeItem(LOCAL_STORAGE_SELECTED_SCHOOL_KEY);
+        return;
+      }
+      setSelectedSchool(parsedSchool);
+    } catch {
+      window.localStorage.removeItem(LOCAL_STORAGE_SELECTED_SCHOOL_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSchool) {
+      window.localStorage.removeItem(LOCAL_STORAGE_SELECTED_SCHOOL_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(LOCAL_STORAGE_SELECTED_SCHOOL_KEY, JSON.stringify(selectedSchool));
+  }, [selectedSchool]);
 
   useEffect(() => {
     const query = schoolQuery.trim();
@@ -258,7 +278,7 @@ export default function Page() {
             <section className="space-y-4">
               <div className="flex items-end justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="text-kicker">오늘의 급식</p>
+                  <p className="text-kicker">{`${selectedDayLabel} 급식`}</p>
                   <h2 className="section-heading">점심 메뉴</h2>
                 </div>
                 <p className="pill-muted shrink-0 px-3 py-1 text-sm font-medium">{calories ? `${calories} kcal` : '칼로리 정보 없음'}</p>
@@ -305,9 +325,9 @@ export default function Page() {
 
             <section className="space-y-4">
               <div className="space-y-2">
-                <p className="text-kicker">오늘 저녁</p>
+                <p className="text-kicker">{`${selectedDayLabel} 저녁`}</p>
                 <h2 className="section-heading">메뉴 추천</h2>
-                <p className="section-description">오늘 점심을 바탕으로 고른 메뉴예요.</p>
+                <p className="section-description">{`${selectedDayLabel} 점심을 바탕으로 고른 메뉴예요.`}</p>
               </div>
 
               <Card className="space-y-3 p-5">
@@ -328,19 +348,10 @@ export default function Page() {
                 </Card>
               ) : (
                 <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="flex snap-x snap-mandatory gap-4 pr-5">
+                  <div className="flex snap-x snap-mandatory gap-3 pr-2">
                     {recommendations.map((recommendation) => (
-                      <Card key={recommendation.menuId} className="w-[88%] min-w-[286px] max-w-[320px] snap-start rounded-[32px]">
-                        <CardContent className="flex h-full flex-col gap-3 p-5 pt-5">
-                          <div className="pb-1">
-                            <div className="difficulty-badge">
-                              <div className="difficulty-icon">
-                                <Clock3 className="h-4 w-4" />
-                              </div>
-                              <p className="difficulty-label">{getDifficultyLabel(recommendation.prepDifficulty)}</p>
-                            </div>
-                          </div>
-
+                      <Card key={recommendation.menuId} className="w-[82%] min-w-[272px] max-w-[300px] snap-start rounded-[32px]">
+                        <CardContent className="flex h-full flex-col gap-3 p-5">
                           <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-[var(--text-strong)]">{recommendation.displayName}</p>
 
                           <div className="space-y-2">
