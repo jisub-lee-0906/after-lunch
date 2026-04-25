@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { buildDinnerRecommendationPayload } from '@/lib/dinner-engine';
+import { buildDinnerRecommendationPayload, buildFallbackDinnerRecommendations } from '@/lib/dinner-engine';
 import { fetchSchoolLunch } from '@/lib/neis';
 
 export async function GET(request: Request) {
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const lunch = await fetchSchoolLunch({ officeCode, schoolCode, date });
 
     if (!lunch) {
-      return NextResponse.json({ error: 'Lunch not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Lunch not found', ...buildFallbackDinnerRecommendations() }, { status: 404 });
     }
 
     return NextResponse.json(buildDinnerRecommendationPayload(lunch));

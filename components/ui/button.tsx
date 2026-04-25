@@ -2,26 +2,25 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
+type ButtonVariant = 'default' | 'outline' | 'secondary' | 'icon' | 'tab';
+
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'default' | 'outline' | 'secondary';
+  variant?: ButtonVariant;
+};
+
+const baseClassName =
+  'inline-flex items-center justify-center rounded-2xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+
+const variantClassNames: Record<ButtonVariant, string> = {
+  default: 'button-primary h-11 w-full px-4',
+  outline: 'button-outline h-11 w-full px-4',
+  secondary: 'button-secondary h-11 w-full px-4',
+  icon: 'icon-button h-10 w-10 rounded-2xl p-0',
+  tab: 'day-tab h-11 w-full rounded-full px-3 py-2.5 text-[0.95rem]',
 };
 
 function Button({ className, variant = 'default', type = 'button', ...props }: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cn(
-        'inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-medium transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:ring-offset-2',
-        'disabled:pointer-events-none disabled:opacity-50',
-        variant === 'default' && 'bg-[var(--surface-strong)] text-white shadow-sm hover:opacity-95',
-        variant === 'outline' && 'border border-[var(--border-soft)] bg-[var(--surface-card)] text-[var(--text-body)] hover:bg-[var(--surface-subtle)]',
-        variant === 'secondary' && 'bg-[var(--surface-muted)] text-[var(--text-body)] hover:opacity-90',
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <button type={type} className={cn(baseClassName, variantClassNames[variant], className)} {...props} />;
 }
 
 export { Button };

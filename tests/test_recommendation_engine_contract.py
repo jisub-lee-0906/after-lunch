@@ -9,16 +9,19 @@ class RecommendationEngineContractTests(unittest.TestCase):
     def test_engine_helper_and_route_exist(self):
         engine_path = PROJECT_ROOT / 'lib/dinner-engine.ts'
         route_path = PROJECT_ROOT / 'app/api/recommendations/route.ts'
+        fallback_route_path = PROJECT_ROOT / 'app/api/recommendations/fallback/route.ts'
 
-        for path in [engine_path, route_path]:
+        for path in [engine_path, route_path, fallback_route_path]:
             self.assertTrue(path.exists(), f'{path} should exist')
 
         engine_content = engine_path.read_text(encoding='utf-8')
         route_content = route_path.read_text(encoding='utf-8')
-        combined = '\n'.join([engine_content, route_content])
+        fallback_content = fallback_route_path.read_text(encoding='utf-8')
+        combined = '\n'.join([engine_content, route_content, fallback_content])
 
         required_strings = [
             'buildDinnerRecommendationPayload',
+            'buildFallbackDinnerRecommendations',
             'scoreDinnerCandidate',
             'summarizeLunchSignals',
             'fetchSchoolLunch',
@@ -41,11 +44,16 @@ class RecommendationEngineContractTests(unittest.TestCase):
 
         required_strings = [
             "'/api/recommendations?officeCode='",
+            "'/api/recommendations/fallback'",
             'setRecommendations',
             'isLoadingRecommendations',
             'recommendationError',
+            'isFallbackRecommendationMode',
+            '점심 없이 저녁 추천 보기',
+            '오늘 급식 정보가 없어요.',
             '추천을 불러오는 중이에요.',
             '`${selectedDayLabel} 점심을 바탕으로 고른 메뉴예요.`',
+            '점심 없이도 바로 볼 수 있는 저녁 메뉴예요.',
             '어울리는 반찬',
             'schoolName',
         ]

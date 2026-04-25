@@ -11,9 +11,9 @@ function Badge({ className, variant = 'default', ...props }: BadgeProps) {
     <div
       className={cn(
         'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium tracking-tight',
-        variant === 'default' && 'bg-[var(--surface-strong)] text-white',
+        variant === 'default' && 'badge-strong',
         variant === 'secondary' && 'pill-muted',
-        variant === 'outline' && 'border border-[var(--border-soft)] bg-[var(--surface-subtle)] text-[var(--text-body)]',
+        variant === 'outline' && 'badge-outline',
         className,
       )}
       {...props}

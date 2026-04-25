@@ -33,6 +33,11 @@ export type DinnerRecommendationPayload = {
   recommendations: DinnerRecommendation[];
 };
 
+export type FallbackDinnerRecommendationPayload = {
+  recommendations: DinnerRecommendation[];
+  bridgeComment: string;
+};
+
 const SOUP_KEYWORDS = ['국', '탕', '찌개', '수제비', '쌀국수', '순두부', '미역국', '된장국'];
 const LIGHT_KEYWORDS = ['두부', '야채', '버섯', '아욱', '순두부', '수제비', '쌀국수'];
 const NOISE_KEYWORDS = [
@@ -198,6 +203,34 @@ export function scoreDinnerCandidate(dinner: ProductionDinner, summary: LunchSig
   }
 
   return score;
+}
+
+export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRecommendationPayload {
+  const recommendations = productionDataset
+    .filter((dinner) => dinner.quality.production_ready)
+    .sort((left, right) => {
+      if (right.popularity.occurrence_count !== left.popularity.occurrence_count) {
+        return right.popularity.occurrence_count - left.popularity.occurrence_count;
+      }
+      return left.nutrition.calories.avg - right.nutrition.calories.avg;
+    })
+    .filter((dinner, index, items) => items.findIndex((item) => item.canonical_name === dinner.canonical_name) === index)
+    .slice(0, limit)
+    .map((dinner, index) => ({
+      menuId: dinner.menu_id,
+      displayName: dinner.display_name,
+      canonicalName: dinner.canonical_name,
+      prepDifficulty: dinner.attributes.prep_difficulty,
+      sideDishes: getRecommendedSideDishes(dinner),
+      recipeUrl: buildRecipeSearchUrl(dinner),
+      reason: index === 0 ? '점심 없이도 바로 보기 좋은 대표 메뉴예요.' : '급식 정보가 없는 날에도 무난하게 고르기 좋은 메뉴예요.',
+      score: dinner.popularity.occurrence_count,
+    } satisfies DinnerRecommendation));
+
+  return {
+    recommendations,
+    bridgeComment: '점심 없이도 바로 볼 수 있는 저녁 메뉴예요.',
+  };
 }
 
 export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecommendationPayload {
