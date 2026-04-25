@@ -7,6 +7,9 @@ export type LunchSignals = {
   hasFried: boolean;
   hasSpicy: boolean;
   isHeavy: boolean;
+  mealType: 'fried-heavy' | 'starch-heavy' | 'hearty-soup' | 'balanced';
+  proteinPreference: 'lighter-protein' | 'diverse-protein' | 'comforting';
+  proteinTags: string[];
   keywords: string[];
 };
 
@@ -40,6 +43,15 @@ export type FallbackDinnerRecommendationPayload = {
 
 const SOUP_KEYWORDS = ['국', '탕', '찌개', '수제비', '쌀국수', '순두부', '미역국', '된장국'];
 const LIGHT_KEYWORDS = ['두부', '야채', '버섯', '아욱', '순두부', '수제비', '쌀국수'];
+const primaryProteinKeywords: Record<string, string[]> = {
+  '콩/두부': ['두부', '순두부', '콩', '비지'],
+  해산물: ['해물', '낙지', '오징어', '새우', '고등어', '갈치', '꽃게', '참치', '연어', '조개'],
+  가금류: ['닭', '찜닭', '치킨', '오리'],
+  돼지고기: ['돼지', '돈까스', '돈육', '제육', '수육', '보쌈'],
+  소고기: ['쇠고기', '소고기', '불고기', '갈비', '한우'],
+};
+const starchHeavyKeywords = ['볶음밥', '짜장', '카레', '파스타', '떡볶이', '덮밥', '비빔밥', '쫄면'];
+const heartySoupKeywords = ['갈비탕', '순두부', '찌개', '국', '탕', '수제비', '쌀국수', '된장국', '미역국'];
 const NOISE_KEYWORDS = [
   '정식',
   '볶음밥',
@@ -95,38 +107,77 @@ function extractLunchKeywords(menuItems: string[]) {
   ).slice(0, 12);
 }
 
+function extractLunchProteinTags(menuItems: string[]) {
+  const menuText = menuItems.join(' ');
+  return Object.entries(primaryProteinKeywords)
+    .filter(([, keywords]) => keywords.some((keyword) => menuText.includes(keyword)))
+    .map(([tag]) => tag);
+}
+
+function classifyMealType(menuItems: string[], flags: { hasFried: boolean; isHeavy: boolean }) {
+  const menuText = menuItems.join(' ');
+  if (flags.hasFried) return 'fried-heavy' as const;
+  if (starchHeavyKeywords.some((keyword) => menuText.includes(keyword))) return 'starch-heavy' as const;
+  if (heartySoupKeywords.some((keyword) => menuText.includes(keyword))) return 'hearty-soup' as const;
+  if (flags.isHeavy) return 'starch-heavy' as const;
+  return 'balanced' as const;
+}
+
+function classifyProteinPreference(mealType: LunchSignals['mealType'], proteinTags: string[]) {
+  if (mealType === 'fried-heavy' || mealType === 'starch-heavy') return 'lighter-protein' as const;
+  if (proteinTags.length >= 2) return 'diverse-protein' as const;
+  return 'comforting' as const;
+}
+
 export function summarizeLunchSignals(menuItems: string[]): LunchSignals {
   const menuText = menuItems.join(' ');
   const friedKeywords = ['튀김', '돈까스', '탕수육', '치킨', '가라아게', '전', '크로켓', '멘보샤', '후라이'];
   const spicyKeywords = ['매콤', '마라', '짬뽕', '김치찌개', '떡볶이', '불닭', '제육', '육개장'];
   const heavyKeywords = ['돈까스', '짜장', '카레', '볶음밥', '갈비', '불고기', '찌개', '떡볶이', '파스타', '마라탕'];
 
+  const hasFried = friedKeywords.some((keyword) => menuText.includes(keyword));
+  const hasSpicy = spicyKeywords.some((keyword) => menuText.includes(keyword));
+  const isHeavy = heavyKeywords.some((keyword) => menuText.includes(keyword));
+  const proteinTags = extractLunchProteinTags(menuItems);
+  const mealType = classifyMealType(menuItems, { hasFried, isHeavy });
+
   return {
-    hasFried: friedKeywords.some((keyword) => menuText.includes(keyword)),
-    hasSpicy: spicyKeywords.some((keyword) => menuText.includes(keyword)),
-    isHeavy: heavyKeywords.some((keyword) => menuText.includes(keyword)),
+    hasFried,
+    hasSpicy,
+    isHeavy,
+    mealType,
+    proteinPreference: classifyProteinPreference(mealType, proteinTags),
+    proteinTags,
     keywords: extractLunchKeywords(menuItems),
   };
 }
 
 function buildBridgeComment(summary: LunchSignals) {
   if (summary.hasFried && summary.hasSpicy) {
-    return '점심에 기름진 메뉴와 자극적인 메뉴가 함께 나왔네요. 저녁은 편안하고 균형 잡힌 구성으로 이어가요.';
+    return '점심에 기름지고 자극적인 메뉴들이 나왔었으니, 저녁은 더 편안하고 균형 잡힌 메뉴들을 추천드립니다.';
   }
 
   if (summary.hasFried) {
-    return '점심에 튀김 요리가 나왔네요. 저녁은 소화가 잘 되는 담백한 메뉴를 제안합니다.';
+    return '점심에 튀김과 같이 무게감 있는 메뉴들이 나왔었으니, 저녁은 조금 더 담백한 메뉴들을 추천드립니다.';
   }
 
   if (summary.hasSpicy) {
-    return '점심 메뉴가 자극적이었네요. 저녁은 매운맛을 줄인 편안한 구성을 권합니다.';
+    return '점심에 매콤한 메뉴들이 나왔었으니, 저녁은 자극을 낮춘 편안한 메뉴들을 추천드립니다.';
+  }
+
+  if (summary.mealType === 'starch-heavy') {
+    return '점심에 탄수화물 비중이 높은 메뉴들이 나왔었으니, 저녁은 단백질 균형을 보완하는 메뉴들을 추천드립니다.';
+  }
+
+  if (summary.proteinPreference === 'diverse-protein') {
+    return '점심에 여러 단백질군이 함께 나온 식단이었으니, 저녁은 부담 없이 이어갈 수 있는 균형 잡힌 메뉴들을 추천드립니다.';
   }
 
   if (summary.isHeavy) {
-    return '점심이 든든했던 날이라 저녁은 무겁지 않게 균형을 맞춘 메뉴를 골랐어요.';
+    return '점심에 든든한 메뉴들이 나왔었으니, 저녁은 무게를 조금 덜어낸 메뉴들을 추천드립니다.';
   }
 
-  return '점심 구성 데이터를 기준으로 균형 잡힌 저녁 메뉴를 추천합니다.';
+  return '점심 식단이 비교적 균형 잡혀 있었으니, 저녁도 가볍게 이어갈 수 있는 메뉴들을 추천드립니다.';
 }
 
 function getLunchTags(summary: LunchSignals) {
@@ -138,6 +189,26 @@ function getLunchTags(summary: LunchSignals) {
   return tags;
 }
 
+function proteinDiversityBonus(dinner: ProductionDinner, summary: LunchSignals) {
+  const dinnerProteinTags = dinner.protein_tags ?? [];
+  if (summary.proteinPreference === 'lighter-protein') {
+    if (dinnerProteinTags.includes('콩/두부')) return 10;
+    if (dinnerProteinTags.includes('해산물')) return 8;
+    if (dinnerProteinTags.includes('가금류')) return 6;
+    return 0;
+  }
+
+  if (summary.proteinPreference === 'diverse-protein') {
+    return dinnerProteinTags.some((tag) => !summary.proteinTags.includes(tag)) ? 7 : 0;
+  }
+
+  if (summary.mealType === 'hearty-soup') {
+    return dinnerProteinTags.includes('콩/두부') || dinnerProteinTags.includes('해산물') ? 5 : 0;
+  }
+
+  return dinnerProteinTags.length > 0 ? 3 : 0;
+}
+
 function getRecommendationReason(dinner: ProductionDinner, summary: LunchSignals) {
   const mainDish = dinner.main_dishes[0] ?? dinner.canonical_name;
 
@@ -145,8 +216,16 @@ function getRecommendationReason(dinner: ProductionDinner, summary: LunchSignals
     return `점심의 기름진 흐름을 덜어줄 ${mainDish} 중심 구성이에요.`;
   }
 
+  if (summary.mealType === 'starch-heavy' && dinner.protein_tags.some((tag) => ['콩/두부', '해산물', '가금류'].includes(tag))) {
+    return `점심보다 단백질 균형을 보완하기 좋은 ${mainDish} 중심 메뉴예요.`;
+  }
+
   if (summary.hasSpicy && !dinner.attributes.spicy) {
     return `점심보다 자극을 낮춘 ${mainDish} 중심 메뉴라 저녁에 편안하게 이어가기 좋아요.`;
+  }
+
+  if (summary.proteinPreference === 'diverse-protein' && dinner.protein_tags.some((tag) => !summary.proteinTags.includes(tag))) {
+    return `점심과 다른 단백질 흐름을 더해 균형을 맞추기 좋은 ${mainDish} 중심 메뉴예요.`;
   }
 
   if (summary.isHeavy && dinner.nutrition.calories.avg <= 700) {
@@ -170,10 +249,22 @@ export function scoreDinnerCandidate(dinner: ProductionDinner, summary: LunchSig
     if (SOUP_KEYWORDS.some((keyword) => dinnerText.includes(keyword))) score += 8;
   }
 
+  if (summary.mealType === 'starch-heavy') {
+    if (SOUP_KEYWORDS.some((keyword) => dinnerText.includes(keyword))) score += 6;
+    if (dinner.nutrition.calories.avg <= 760) score += 4;
+  }
+
   if (summary.hasSpicy) {
     score += dinner.attributes.spicy ? -16 : 16;
     if (LIGHT_KEYWORDS.some((keyword) => dinnerText.includes(keyword))) score += 6;
   }
+
+  if (summary.mealType === 'hearty-soup') {
+    if (!dinner.attributes.fried) score += 5;
+    if (!SOUP_KEYWORDS.some((keyword) => dinnerText.includes(keyword))) score += 4;
+  }
+
+  score += proteinDiversityBonus(dinner, summary);
 
   if (summary.isHeavy) {
     if (averageCalories <= 700) score += 10;

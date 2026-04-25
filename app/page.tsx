@@ -283,16 +283,14 @@ export default function Page() {
           <>
             <section className="status-card space-y-4 text-left">
               <div className="space-y-2">
-                <p className="text-kicker">{`${selectedDayLabel} 급식`}</p>
                 <h2 className="section-heading text-[1.55rem]">오늘 급식 정보가 없어요.</h2>
-                <p className="section-description">다른 날짜를 확인하거나 바로 저녁 추천을 이어볼 수 있어요.</p>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Button type="button" variant="outline" onClick={() => setSelectedDayOffset(-1)}>
-                  어제 급식 보기
+                  어제 보기
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setSelectedDayOffset(1)}>
-                  내일 급식 보기
+                  내일 보기
                 </Button>
                 <Button
                   type="button"
@@ -314,9 +312,7 @@ export default function Page() {
             {recommendations.length > 0 ? (
               <section ref={fallbackRecommendationRef} className="space-y-4">
                 <div className="space-y-2">
-                  <p className="text-kicker">{`${selectedDayLabel} 저녁`}</p>
                   <h2 className="section-heading">메뉴 추천</h2>
-                  <p className="section-description">{bridgeComment ?? '점심 없이도 바로 볼 수 있는 저녁 메뉴예요.'}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -328,18 +324,7 @@ export default function Page() {
                           <CardContent className="flex h-full flex-col gap-6 p-7 pt-8">
                             <div className="space-y-4">
                               <p className="text-kicker">오늘 저녁 추천</p>
-                              <div className="space-y-3">
-                                <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
-                                <p className="text-caption">어울리는 반찬</p>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2.5 text-sm text-slate-700">
-                              {recommendation.sideDishes.map((item) => (
-                                <span key={item} className="meta-chip px-3 py-1.5">
-                                  {item}
-                                </span>
-                              ))}
+                              <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
                             </div>
 
                             <a
@@ -364,10 +349,7 @@ export default function Page() {
           <>
             <section className="space-y-4">
               <div className="section-header">
-                <div className="space-y-1">
-                  <p className="text-kicker">{`${selectedDayLabel} 급식`}</p>
-                  <h2 className="section-heading">점심 메뉴</h2>
-                </div>
+                <h2 className="section-heading">점심 메뉴</h2>
                 <p className="pill-muted shrink-0 px-3 py-1 text-sm font-medium">{calories ? `${calories} kcal` : '칼로리 정보 없음'}</p>
               </div>
 
@@ -408,13 +390,18 @@ export default function Page() {
                   ))}
                 </div>
               </Card>
+
+              <Card className="p-6">
+                <CardContent className="space-y-2 p-0">
+                  <p className="text-kicker">식단 요약 기준</p>
+                  <p className="text-base leading-7 text-body-muted">{bridgeComment}</p>
+                </CardContent>
+              </Card>
             </section>
 
             <section className="space-y-4">
               <div className="space-y-2">
-                <p className="text-kicker">{`${selectedDayLabel} 저녁`}</p>
                 <h2 className="section-heading">메뉴 추천</h2>
-                <p className="section-description">{`${selectedDayLabel} 점심을 바탕으로 고른 메뉴예요.`}</p>
               </div>
 
               {isLoadingRecommendations ? (
@@ -437,19 +424,7 @@ export default function Page() {
                         <Card key={recommendation.menuId} className="recommendation-card min-w-[320px] max-w-[360px]">
                           <CardContent className="flex h-full flex-col gap-6 p-7 pt-8">
                             <div className="space-y-4">
-                              <p className="text-kicker">점심 기반 추천</p>
-                              <div className="space-y-3">
-                                <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
-                                <p className="text-caption">어울리는 반찬</p>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2.5 text-sm text-slate-700">
-                              {recommendation.sideDishes.map((item) => (
-                                <span key={item} className="meta-chip px-3 py-1.5">
-                                  {item}
-                                </span>
-                              ))}
+                              <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
                             </div>
 
                             <a
