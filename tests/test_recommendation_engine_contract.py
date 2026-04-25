@@ -45,8 +45,8 @@ class RecommendationEngineContractTests(unittest.TestCase):
             'isLoadingRecommendations',
             'recommendationError',
             '추천을 불러오는 중이에요.',
-            '오늘 점심을 바탕으로 고른 메뉴예요.',
-            '추천 근거',
+            '`${selectedDayLabel} 점심을 바탕으로 고른 메뉴예요.`',
+            '어울리는 반찬',
             'schoolName',
         ]
         for item in required_strings:

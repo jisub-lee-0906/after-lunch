@@ -78,7 +78,6 @@ export default function Page() {
   const [lunchData, setLunchData] = useState<LunchData | null>(null);
   const [lunchSummary, setLunchSummary] = useState<LunchSummary | null>(null);
   const [lunchTags, setLunchTags] = useState<string[]>([]);
-  const [bridgeComment, setBridgeComment] = useState('');
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoadingLunch, setIsLoadingLunch] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
@@ -150,7 +149,6 @@ export default function Page() {
       setLunchData(null);
       setLunchSummary(null);
       setLunchTags([]);
-      setBridgeComment('');
       setRecommendations([]);
       setLunchError(null);
       setRecommendationError(null);
@@ -180,7 +178,6 @@ export default function Page() {
           setLunchData(null);
           setLunchSummary(null);
           setLunchTags([]);
-          setBridgeComment('');
           setRecommendations([]);
           setLunchError('오늘 급식을 찾지 못했어요.');
           setRecommendationError(null);
@@ -194,14 +191,12 @@ export default function Page() {
         setLunchData(payload.lunch);
         setLunchSummary(payload.lunchSummary);
         setLunchTags(payload.lunchTags ?? []);
-        setBridgeComment(payload.bridgeComment ?? '오늘 점심을 바탕으로 고른 메뉴예요.');
         setRecommendations(payload.recommendations ?? []);
       } catch (error) {
         if ((error as Error).name === 'AbortError') return;
         setLunchData(null);
         setLunchSummary(null);
         setLunchTags([]);
-        setBridgeComment('');
         setRecommendations([]);
         const message = error instanceof Error ? error.message : '추천 정보를 불러오지 못했습니다.';
         setLunchError(message);
@@ -330,11 +325,6 @@ export default function Page() {
                 <p className="section-description">{`${selectedDayLabel} 점심을 바탕으로 고른 메뉴예요.`}</p>
               </div>
 
-              <Card className="space-y-3 p-5">
-                <p className="text-caption">추천 근거</p>
-                <p className="text-[1rem] leading-7 text-[var(--text-body)]">{bridgeComment}</p>
-              </Card>
-
               {isLoadingRecommendations ? (
                 <Card className="p-6 text-center">
                   <div className="flex items-center justify-center gap-3 text-[var(--text-body)]">
@@ -347,42 +337,35 @@ export default function Page() {
                   <p className="text-body-muted text-[1rem] leading-7">{recommendationError}</p>
                 </Card>
               ) : (
-                <div className="overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="flex snap-x snap-mandatory gap-3 pr-2">
-                    {recommendations.map((recommendation) => (
-                      <Card key={recommendation.menuId} className="w-[82%] min-w-[272px] max-w-[300px] snap-start rounded-[32px]">
-                        <CardContent className="flex h-full flex-col gap-3 p-5">
+                <div className="space-y-3">
+                  {recommendations.map((recommendation) => (
+                    <Card key={recommendation.menuId} className="rounded-[32px]">
+                      <CardContent className="flex h-full flex-col gap-4 p-5">
+                        <div className="space-y-2.5">
                           <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-[var(--text-strong)]">{recommendation.displayName}</p>
+                          <p className="text-caption">어울리는 반찬</p>
+                        </div>
 
-                          <div className="space-y-2">
-                            <p className="text-caption">추천 근거</p>
-                            <p className="text-sm leading-6 text-[var(--text-body)]">{recommendation.reason}</p>
-                          </div>
+                        <div className="flex flex-wrap gap-2 text-sm text-[var(--text-body)]">
+                          {recommendation.sideDishes.map((item) => (
+                            <span key={item} className="meta-chip px-3 py-1">
+                              {item}
+                            </span>
+                          ))}
+                        </div>
 
-                          <div className="space-y-2">
-                            <p className="text-caption">어울리는 반찬</p>
-                            <div className="flex flex-wrap gap-2 text-sm text-[var(--text-body)]">
-                              {recommendation.sideDishes.map((item) => (
-                                <span key={item} className="meta-chip px-3 py-1">
-                                  {item}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <a
-                            href={recommendation.recipeUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-auto inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--surface-strong)] px-4 text-sm font-medium text-white transition hover:opacity-95"
-                          >
-                            레시피 보기
-                            <ChevronRight className="ml-2 h-4 w-4" />
-                          </a>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                        <a
+                          href={recommendation.recipeUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-auto inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[var(--surface-strong)] px-4 text-sm font-medium text-white transition hover:opacity-95"
+                        >
+                          레시피 보기
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </a>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
               )}
             </section>
