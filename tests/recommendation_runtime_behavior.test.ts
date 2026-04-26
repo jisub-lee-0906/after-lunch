@@ -142,6 +142,28 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
       expectedDensityLabel: '든든한 구성',
       expectedSummaryLabel: '든든한 한 끼',
     },
+    {
+      name: 'smoked duck lunch should not collapse to bland copy',
+      lunch: {
+        date: '20260417',
+        calories: 673,
+        menuItems: ['현미밥', '콩나물국', '탕평채', '건조두부야채볶음', '배추김치', '오리훈제', '우유'],
+        rawMenu: '현미밥<br/>콩나물국<br/>탕평채<br/>건조두부야채볶음<br/>배추김치<br/>오리훈제<br/>우유',
+      },
+      expectedDensityLabel: '균형 잡힌 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
+    {
+      name: 'pork belly lunch should not read as bland',
+      lunch: {
+        date: '20260417',
+        calories: 917,
+        menuItems: ['차조밥', '소고기무국', '삼겹살편육', '감자채볶음', '배추김치', '배', '급식우유'],
+        rawMenu: '차조밥<br/>소고기무국<br/>삼겹살편육<br/>감자채볶음<br/>배추김치<br/>배<br/>급식우유',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
   ];
 
   for (const scenario of cases) {
