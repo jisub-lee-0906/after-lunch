@@ -91,7 +91,7 @@ class RecommendationEngineContractTests(unittest.TestCase):
             'schoolName',
             'bridge-card',
             'bridgeComment',
-            '메뉴 추천',
+            '오늘 저녁 추천',
         ]
         for item in required_strings:
             self.assertIn(item, content)

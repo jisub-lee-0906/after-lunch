@@ -290,13 +290,13 @@ export default function Page() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="metric-card">
-                  <p className="text-caption">식단 밀도</p>
+                  <p className="text-caption">점심 식사량</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">
                     {lunchSummary.densityLabel}
                   </p>
                 </div>
                 <div className="metric-card">
-                  <p className="text-caption">식단 요약</p>
+                  <p className="text-caption">점심 자극도</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">
                     {lunchSummary.summaryLabel}
                   </p>
@@ -320,7 +320,8 @@ export default function Page() {
 
             <section className="space-y-4">
               <div className="space-y-2">
-                <h2 className="section-heading">메뉴 추천</h2>
+                <h2 className="section-heading">오늘 저녁 추천</h2>
+                <p className="section-description">점심 메뉴를 참고해 집에서 부담 없이 준비할 수 있는 저녁 메뉴를 추천해드려요.</p>
               </div>
 
               {isLoadingRecommendations ? (
@@ -370,7 +371,7 @@ export default function Page() {
                               rel="noreferrer"
                               className="button-primary mt-auto inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-medium"
                             >
-                              레시피 보기
+                              이 메뉴 레시피
                               <ChevronRight className="ml-2 h-4 w-4" />
                             </a>
                           </CardContent>

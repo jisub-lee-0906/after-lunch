@@ -177,28 +177,30 @@ function getLunchProfile(lunch: NeisLunch, summary: LunchSignals) {
     densityScore >= 6 ||
     (starchCount >= 1 && calories >= 620) ||
     (calories >= 760 && (proteinMainCount >= 1 || processedCount >= 1 || friedCount >= 1 || starchCount >= 1))
-      ? '든든한 구성'
+      ? '든든하게 먹은 편'
       : densityScore >= 2 || calories >= 560
-        ? '균형 잡힌 구성'
-        : '가벼운 구성';
+        ? '적당히 먹은 편'
+        : '가볍게 먹은 편';
+
+  const oneBowlStyleSignal = starchCount >= 1 && heavyScore >= 4 && friedCount === 0 && greasyMainCount === 0;
 
   let summaryLabel: string;
   if (greasyMainCount >= 1 && spicyCount >= 1) {
     summaryLabel = heavyScore >= 5 ? '기름지고 매콤한 편' : '매콤한 편';
   } else if (spicyCount >= 1 && heavyScore >= 5) {
     summaryLabel = '매콤하고 든든한 편';
-  } else if (starchCount >= 1 && heavyScore >= 4) {
-    summaryLabel = '든든한 한 그릇형';
+  } else if (oneBowlStyleSignal) {
+    summaryLabel = '한 그릇 메뉴가 있었던 편';
   } else if (greasyMainCount >= 1 || (friedCount >= 1 && spicyCount === 0)) {
     summaryLabel = '기름기 있는 편';
   } else if (heavyScore >= 6) {
-    summaryLabel = '든든한 한 끼';
+    summaryLabel = '메인 반찬이 든든한 편';
   } else if (soupScore >= 2 && heavyScore <= 4 && calories >= 560 && calories < 760) {
-    summaryLabel = '국물 있는 한 끼';
+    summaryLabel = '국물 메뉴가 있는 편';
   } else if (spicyCount >= 1) {
     summaryLabel = '매콤한 편';
   } else {
-    summaryLabel = '담백한 편';
+    summaryLabel = '자극이 적은 편';
   }
 
   return {
@@ -368,27 +370,27 @@ function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
     return '점심이 매콤했어서, 저녁은 자극을 낮춘 메뉴들로 골랐어요.';
   }
 
-  if (profile.summaryLabel === '든든한 한 그릇형') {
-    return '점심이 한 그릇으로 든든했어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.';
+  if (profile.summaryLabel === '한 그릇 메뉴가 있었던 편') {
+    return '점심이 한 그릇 메뉴 위주였어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.';
   }
 
-  if (profile.summaryLabel === '든든한 한 끼') {
-    return '점심이 든든한 한 끼였어서, 저녁은 조금 더 편안하게 이어갈 메뉴들로 골랐어요.';
+  if (profile.summaryLabel === '메인 반찬이 든든한 편') {
+    return '점심에 메인 반찬이 든든했어서, 저녁은 조금 더 편안하게 먹기 좋은 메뉴로 골랐어요.';
   }
 
-  if (profile.summaryLabel === '국물 있는 한 끼') {
-    return '점심이 국물 있는 한 끼였어서, 저녁은 너무 무겁지 않게 이어갈 메뉴들로 골랐어요.';
+  if (profile.summaryLabel === '국물 메뉴가 있는 편') {
+    return '점심에 국물 메뉴가 있었어서, 저녁은 너무 무겁지 않은 메뉴로 골랐어요.';
   }
 
   if (summary.proteinPreference === 'diverse-protein') {
-    return '점심 구성이 든든했어서, 저녁은 부담 없이 이어갈 메뉴들로 골랐어요.';
+    return '점심 구성을 보고, 저녁은 부담 없이 먹기 좋은 메뉴로 골랐어요.';
   }
 
   if (summary.isHeavy) {
-    return '점심이 든든했어서, 저녁은 무게를 덜어낸 메뉴들로 골랐어요.';
+    return '점심이 든든했어서, 저녁은 조금 더 가볍게 먹기 좋은 메뉴로 골랐어요.';
   }
 
-  return '점심 흐름에 맞춰 가볍게 이어갈 메뉴들로 골랐어요.';
+  return '오늘 점심이 비교적 가벼운 편이라, 저녁은 부담 없이 준비해 먹을 수 있는 메뉴로 골랐어요.';
 }
 
 function getLunchTags(summary: LunchSignals) {
