@@ -8,7 +8,9 @@
     "dev:reset": "bash ./scripts/dev-reset.sh",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "tsc --noEmit",
+    "test:runtime": "tsx --test tests/recommendation_runtime_behavior.test.ts",
+    "verify:deploy": "npm run lint && npm run test:runtime && python3 -m unittest discover -s tests -p 'test_*.py' -v && npm run build"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",
@@ -24,6 +26,7 @@
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.4",
+    "tsx": "^4.20.6",
     "typescript": "^6.0.3"
   }
 }

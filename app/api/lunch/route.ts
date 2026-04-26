@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { fetchSchoolLunch } from '@/lib/neis';
+import { fetchSchoolLunch, isValidNeisDate } from '@/lib/neis';
 
 export async function GET(request: NextRequest) {
   const officeCode = request.nextUrl.searchParams.get('officeCode')?.trim() ?? '';
@@ -9,6 +9,10 @@ export async function GET(request: NextRequest) {
 
   if (!officeCode || !schoolCode || !date) {
     return NextResponse.json({ error: 'officeCode, schoolCode, date가 필요합니다.' }, { status: 400 });
+  }
+
+  if (!isValidNeisDate(date)) {
+    return NextResponse.json({ error: 'date는 YYYYMMDD 형식이어야 합니다.' }, { status: 400 });
   }
 
   try {

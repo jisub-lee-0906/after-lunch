@@ -73,6 +73,10 @@ function parseCalories(rawCalories: string | undefined) {
   return matched ? Number(matched[0]) : null;
 }
 
+export function isValidNeisDate(value: string) {
+  return /^\d{8}$/.test(value);
+}
+
 export async function searchSchools(query: string) {
   const trimmed = query.trim();
   if (!trimmed) return [] as NeisSchool[];

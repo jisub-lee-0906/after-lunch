@@ -2,7 +2,7 @@ from pathlib import Path
 import unittest
 
 
-PROJECT_ROOT = Path('/home/jisub-lee/workspace/after-lunch')
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class RecommendationClassificationContractTests(unittest.TestCase):

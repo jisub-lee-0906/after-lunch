@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { buildDinnerRecommendationPayload, buildFallbackDinnerRecommendations } from '@/lib/dinner-engine';
-import { fetchSchoolLunch } from '@/lib/neis';
+import { fetchSchoolLunch, isValidNeisDate } from '@/lib/neis';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,6 +12,13 @@ export async function GET(request: Request) {
   if (!officeCode || !schoolCode || !date) {
     return NextResponse.json(
       { error: 'officeCode, schoolCode, date are required' },
+      { status: 400 },
+    );
+  }
+
+  if (!isValidNeisDate(date)) {
+    return NextResponse.json(
+      { error: 'date must be in YYYYMMDD format' },
       { status: 400 },
     );
   }

@@ -1,4 +1,7 @@
+import json
 import unittest
+from pathlib import Path
+import tempfile
 
 from scripts.final_production_dataset import (
     build_bridge_tags,
@@ -15,6 +18,8 @@ from scripts.final_production_dataset import (
     is_production_ready_row,
     is_stable_operational_row,
     load_manual_taxonomy_overrides,
+    load_source_rows,
+    resolve_pipeline_paths,
     select_final_dataset_rows,
     select_stable_operational_rows,
 )
@@ -491,6 +496,51 @@ class FinalProductionDatasetTests(unittest.TestCase):
         self.assertEqual(match_plan['primary_needs'], ['broth_reset', 'daily_stabilizer'])
         self.assertEqual(match_plan['matched_responses'], ['treat_continuation'])
         self.assertEqual(match_plan['fit_label'], 'partial')
+
+    def test_resolve_pipeline_paths_uses_explicit_input_path_when_provided(self):
+        root = Path('/tmp/after-lunch-audit')
+        custom_input = root / 'fixtures' / 'custom_input.json'
+        paths = resolve_pipeline_paths(root, input_path=custom_input)
+        self.assertEqual(paths['input_path'], custom_input)
+        self.assertEqual(paths['output_path'], root / 'datasets' / '2025' / 'production_final_dataset_2025.json')
+
+    def test_load_source_rows_raises_clear_error_when_input_missing(self):
+        missing_path = Path('/tmp/after-lunch-missing-input.json')
+        with self.assertRaises(FileNotFoundError) as context:
+            load_source_rows(missing_path)
+        self.assertIn(str(missing_path), str(context.exception))
+        self.assertIn('app_seed_ultra_curated_2025.json', str(context.exception))
+
+    def test_load_source_rows_reads_json_rows_from_explicit_input_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / 'custom_input.json'
+            input_path.write_text('[{"recommend_name": "테스트 정식"}]', encoding='utf-8')
+            rows = load_source_rows(input_path)
+        self.assertEqual(rows, [{'recommend_name': '테스트 정식'}])
+
+    def test_shipped_production_dataset_matches_current_record_schema(self):
+        dataset_path = Path(__file__).resolve().parents[1] / 'datasets' / '2025' / 'production_final_dataset_2025.json'
+        rows = load_source_rows(dataset_path)
+        first_row = rows[0]
+
+        self.assertIn('bridge_tags', first_row)
+        self.assertIn('dinner_response', first_row)
+        self.assertIn('taxonomy', first_row)
+        self.assertIn('parent_pitch', first_row['taxonomy'])
+        self.assertIsInstance(first_row['bridge_tags'], list)
+        self.assertIsInstance(first_row['dinner_response'], list)
+
+    def test_shipped_production_report_samples_match_current_record_schema(self):
+        report_path = Path(__file__).resolve().parents[1] / 'datasets' / '2025' / 'production_final_dataset_2025_report.json'
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        sample = report['samples'][0]
+        taxonomy_sample = report['taxonomy_samples'][0]
+
+        self.assertIn('taxonomy', sample)
+        self.assertIn('bridge_tags', sample)
+        self.assertIn('dinner_response', sample)
+        self.assertIn('bridge_tags', taxonomy_sample)
+        self.assertIn('dinner_response', taxonomy_sample)
 
 
 if __name__ == '__main__':

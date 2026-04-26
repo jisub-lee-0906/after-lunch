@@ -322,7 +322,7 @@ def build_final_record(row: dict, *, taxonomy_overrides: dict[str, dict] | None 
     }
 
 
-def build_report(source_rows: list[dict], final_rows: list[dict], *, dataset_tier: str) -> dict:
+def build_report(source_rows: list[dict], final_rows: list[dict], dataset_tier: str) -> dict:
     protein_counts: Counter[str] = Counter()
     calorie_profile_counts: Counter[str] = Counter()
     taxonomy_counts: Counter[str] = Counter()
@@ -352,16 +352,31 @@ def build_report(source_rows: list[dict], final_rows: list[dict], *, dataset_tie
     }
 
 
-def main() -> None:
-    root = Path(__file__).resolve().parents[1]
+def resolve_pipeline_paths(root: Path, input_path: Path | None = None) -> dict[str, Path]:
     dataset_dir = root / 'datasets' / '2025'
-    input_path = dataset_dir / 'app_seed_ultra_curated_2025.json'
-    output_path = dataset_dir / 'production_final_dataset_2025.json'
-    report_path = dataset_dir / 'production_final_dataset_2025_report.json'
-    candidate_output_path = dataset_dir / 'production_candidate_dataset_2025.json'
-    candidate_report_path = dataset_dir / 'production_candidate_dataset_2025_report.json'
+    return {
+        'dataset_dir': dataset_dir,
+        'input_path': input_path or dataset_dir / 'app_seed_ultra_curated_2025.json',
+        'output_path': dataset_dir / 'production_final_dataset_2025.json',
+        'report_path': dataset_dir / 'production_final_dataset_2025_report.json',
+        'candidate_output_path': dataset_dir / 'production_candidate_dataset_2025.json',
+        'candidate_report_path': dataset_dir / 'production_candidate_dataset_2025_report.json',
+    }
 
-    rows = json.loads(input_path.read_text(encoding='utf-8'))
+
+def load_source_rows(input_path: Path) -> list[dict]:
+    if not input_path.exists():
+        raise FileNotFoundError(
+            f'Missing source dataset: {input_path}. Provide an explicit input path or restore app_seed_ultra_curated_2025.json.'
+        )
+    return json.loads(input_path.read_text(encoding='utf-8'))
+
+
+def main(input_path: Path | None = None) -> None:
+    root = Path(__file__).resolve().parents[1]
+    paths = resolve_pipeline_paths(root, input_path=input_path)
+
+    rows = load_source_rows(paths['input_path'])
     taxonomy_overrides = load_manual_taxonomy_overrides()
 
     candidate_selected = select_final_dataset_rows(rows)
@@ -372,10 +387,10 @@ def main() -> None:
     final_rows = [build_final_record(row, taxonomy_overrides=taxonomy_overrides) for row in operational_selected]
     report = build_report(rows, final_rows, dataset_tier='operational-stable')
 
-    output_path.write_text(json.dumps(final_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    candidate_output_path.write_text(json.dumps(candidate_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    candidate_report_path.write_text(json.dumps(candidate_report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    paths['output_path'].write_text(json.dumps(final_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    paths['report_path'].write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    paths['candidate_output_path'].write_text(json.dumps(candidate_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    paths['candidate_report_path'].write_text(json.dumps(candidate_report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
 if __name__ == '__main__':

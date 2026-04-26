@@ -8,9 +8,11 @@ if __package__ in {None, ''}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.final_production_dataset import (
+    build_bridge_tags,
     build_parent_pitch,
     classify_comfort_level,
     classify_dinner_fit,
+    classify_dinner_response,
     classify_meal_style,
     load_manual_taxonomy_overrides,
 )
@@ -45,8 +47,11 @@ def enrich_row(row: dict, overrides: dict[str, dict]) -> dict:
         'dinner_fit': override.get('dinner_fit', taxonomy['dinner_fit']),
     })
     taxonomy['parent_pitch'] = override.get('parent_pitch') or build_parent_pitch(source_row, taxonomy)
+    bridge_tags = build_bridge_tags(source_row, taxonomy)
     enriched = dict(row)
     enriched['taxonomy'] = taxonomy
+    enriched['bridge_tags'] = bridge_tags
+    enriched['dinner_response'] = classify_dinner_response(source_row, taxonomy, bridge_tags)
     return enriched
 
 
@@ -74,6 +79,7 @@ def main() -> None:
     report['comfort_level_counts'] = dict(sorted(comfort_counts.items()))
     report['dinner_fit_counts'] = dict(sorted(dinner_fit_counts.items()))
     report['manual_override_count'] = len(overrides)
+    report['samples'] = enriched_rows[:10]
     report['taxonomy_samples'] = enriched_rows[:10]
 
     dataset_path.write_text(json.dumps(enriched_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
