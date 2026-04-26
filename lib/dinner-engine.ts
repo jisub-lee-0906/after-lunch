@@ -190,7 +190,7 @@ function getLunchProfile(lunch: NeisLunch, summary: LunchSignals) {
   } else if (starchCount >= 1 && heavyScore >= 4) {
     summaryLabel = '든든한 한 그릇형';
   } else if (greasyMainCount >= 1 || (friedCount >= 1 && spicyCount === 0)) {
-    summaryLabel = '기름진 편';
+    summaryLabel = '기름기 있는 편';
   } else if (heavyScore >= 6) {
     summaryLabel = '든든한 한 끼';
   } else if (soupScore >= 2 && heavyScore <= 4 && calories >= 560 && calories < 760) {
@@ -360,7 +360,7 @@ function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
     return '점심이 기름지고 자극적이었어서, 저녁은 더 편안한 메뉴들로 골랐어요.';
   }
 
-  if (profile.summaryLabel === '기름진 편') {
+  if (profile.summaryLabel === '기름기 있는 편') {
     return '점심이 조금 무거웠어서, 저녁은 더 담백한 메뉴들로 골랐어요.';
   }
 

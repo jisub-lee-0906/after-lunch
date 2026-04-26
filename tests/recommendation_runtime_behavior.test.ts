@@ -96,7 +96,7 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
         rawMenu: '보리밥<br/>버섯샤브샤브<br/>두부면야채무침<br/>생선까스 타르타르소스<br/>깍두기<br/>망고푸딩',
       },
       expectedDensityLabel: '균형 잡힌 구성',
-      expectedSummaryLabel: '기름진 편',
+      expectedSummaryLabel: '기름기 있는 편',
     },
     {
       name: 'spaghetti lunch should count as starch-heavy whole plate',
