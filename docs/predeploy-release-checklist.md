@@ -20,11 +20,17 @@
 - [x] shipped production dataset/report schema is verified against current generator expectations
 
 ## Local smoke before deploy
-- [x] start fresh app on local production-like server (verified on port 3001 because an unmanaged 3000 listener was already in use)
+- [x] start fresh app on local production-like server (verified on port 3001 because a separate 3000 listener was already in use)
 - [x] smoke `/api/schools`
 - [x] smoke `/api/lunch`
 - [x] smoke `/api/recommendations`
+- [x] smoke `/api/recommendations/fallback`
 - [x] browser/HTTP check homepage response
 
+## Latest verified sample
+- school query: `고진중학교`
+- lunch sample: `officeCode=J10&schoolCode=7751396&date=20260424`
+- fallback sample: `/api/recommendations/fallback`
+
 ## Release note
-Current working tree still contains intentional code/test changes that should be committed before real deployment.
+Repo is ready for real deployment smoke in the target environment; remaining checks are environment injection and live endpoint verification.

@@ -39,11 +39,16 @@
 ### 1-2. 빌드/실행
 - [x] `npm run build` 통과
 - [x] `npm run verify:deploy` 통과
-- [ ] 배포 대상 환경에서 production start smoke test
-- [ ] `/api/schools` 응답 확인
-- [ ] `/api/lunch` 응답 확인
-- [ ] `/api/recommendations` 응답 확인
-- [ ] 점심 없는 날 `/api/recommendations/fallback` 응답 확인
+- [x] 로컬 production-like start smoke test 완료 (`next start --hostname 127.0.0.1 --port 3001`)
+- [x] 로컬 production-like `/api/schools` 응답 확인
+- [x] 로컬 production-like `/api/lunch` 응답 확인
+- [x] 로컬 production-like `/api/recommendations` 응답 확인
+- [x] 로컬 production-like 점심 없는 날 `/api/recommendations/fallback` 응답 확인
+- [ ] 실제 배포 대상 환경에서 production smoke test
+- [ ] 실제 배포 환경 `/api/schools` 응답 확인
+- [ ] 실제 배포 환경 `/api/lunch` 응답 확인
+- [ ] 실제 배포 환경 `/api/recommendations` 응답 확인
+- [ ] 실제 배포 환경 점심 없는 날 `/api/recommendations/fallback` 응답 확인
 
 ### 1-3. 데이터 자산
 - [x] `datasets/2025/production_final_dataset_2025.json` 존재
@@ -101,7 +106,7 @@
 - [x] 학교 검색 → 학교 선택 → 날짜 이동 → 점심 조회 → 저녁 추천 전체 플로우 로컬 확인
 - [ ] 선택 학교 localStorage 복원 확인
 - [ ] 점심 없는 날 안내 문구 확인
-- [ ] fallback 추천 흐름 확인
+- [x] fallback 추천 흐름 확인
 - [ ] recipe 링크 동작 확인
 
 ### 3-2. 모바일 품질
@@ -185,7 +190,8 @@
 
 현재 판정:
 - 코드/데이터/추천 품질 기준으로는 Go 쪽
-- 남은 것은 주로 배포 환경/운영 절차 확인
+- 로컬 production-like smoke는 통과했다.
+- 남은 것은 실제 배포 환경 smoke와 운영 절차 확인이다.
 
 ---
 
