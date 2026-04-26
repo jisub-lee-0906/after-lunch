@@ -319,19 +319,23 @@ function getLunchTags(summary: LunchSignals) {
   return tags;
 }
 
-function getLunchDensityLabel(summary: LunchSignals) {
-  if (summary.hasFried || summary.isHeavy || summary.mealType === 'starch-heavy') {
+function getLunchDensityLabel(lunch: NeisLunch, summary: LunchSignals) {
+  const calories = lunch.calories ?? 0;
+
+  if (summary.hasFried || summary.isHeavy || summary.mealType === 'starch-heavy' || calories >= 760) {
     return '든든한 구성';
   }
 
-  if (summary.mealType === 'hearty-soup') {
-    return '가벼운 구성';
+  if (summary.mealType === 'balanced' || calories >= 560) {
+    return '균형 잡힌 구성';
   }
 
   return '가벼운 구성';
 }
 
-function getLunchSummaryLabel(summary: LunchSignals) {
+function getLunchSummaryLabel(lunch: NeisLunch, summary: LunchSignals) {
+  const calories = lunch.calories ?? 0;
+
   if (summary.hasFried && summary.hasSpicy) {
     return '기름지고 매콤한 편';
   }
@@ -349,7 +353,11 @@ function getLunchSummaryLabel(summary: LunchSignals) {
   }
 
   if (summary.mealType === 'starch-heavy') {
-    return '탄수화물 중심';
+    return '든든한 한 그릇형';
+  }
+
+  if (summary.mealType === 'hearty-soup' && calories >= 560) {
+    return '국물 있는 한 끼';
   }
 
   return '담백한 편';
@@ -642,8 +650,8 @@ export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecomm
       hasFried: lunchSummary.hasFried,
       hasSpicy: lunchSummary.hasSpicy,
       isHeavy: lunchSummary.isHeavy,
-      densityLabel: getLunchDensityLabel(lunchSummary),
-      summaryLabel: getLunchSummaryLabel(lunchSummary),
+      densityLabel: getLunchDensityLabel(lunch, lunchSummary),
+      summaryLabel: getLunchSummaryLabel(lunch, lunchSummary),
     },
     lunchTags: getLunchTags(lunchSummary),
     bridgeComment: buildBridgeComment(lunchSummary),

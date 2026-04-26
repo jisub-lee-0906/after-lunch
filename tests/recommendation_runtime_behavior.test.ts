@@ -47,7 +47,31 @@ test('buildDinnerRecommendationPayload derives persuasive density and summary la
   assert.equal(payload.lunchSummary.summaryLabel, '기름지고 매콤한 편');
 });
 
-test('buildDinnerRecommendationPayload derives calmer labels for lighter balanced lunches', () => {
+test('buildDinnerRecommendationPayload derives balanced labels for steady lunches', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 610,
+    menuItems: ['쌀밥', '닭곰탕', '시금치나물', '깍두기'],
+    rawMenu: '쌀밥<br/>닭곰탕<br/>시금치나물<br/>깍두기',
+  });
+
+  assert.equal(payload.lunchSummary.densityLabel, '균형 잡힌 구성');
+  assert.equal(payload.lunchSummary.summaryLabel, '국물 있는 한 끼');
+});
+
+test('buildDinnerRecommendationPayload derives one-plate summary labels for starch-heavy lunches', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 680,
+    menuItems: ['참치마요덮밥', '배추김치'],
+    rawMenu: '참치마요덮밥<br/>배추김치',
+  });
+
+  assert.equal(payload.lunchSummary.densityLabel, '든든한 구성');
+  assert.equal(payload.lunchSummary.summaryLabel, '든든한 한 그릇형');
+});
+
+test('buildDinnerRecommendationPayload derives lighter labels for very simple lunches', () => {
   const payload = buildDinnerRecommendationPayload({
     date: '20250424',
     calories: 520,
