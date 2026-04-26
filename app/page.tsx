@@ -1,9 +1,8 @@
 'use client';
 
 import { Check, ChevronRight, LoaderCircle, Search, Settings, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -78,9 +77,7 @@ export default function Page() {
   const [selectedDayOffset, setSelectedDayOffset] = useState<(typeof dateTabs)[number]>(0);
   const [lunchData, setLunchData] = useState<LunchData | null>(null);
   const [lunchSummary, setLunchSummary] = useState<LunchSummary | null>(null);
-  const [lunchTags, setLunchTags] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [isFallbackRecommendationMode, setIsFallbackRecommendationMode] = useState(false);
   const [bridgeComment, setBridgeComment] = useState<string | null>(null);
   const [isLoadingLunch, setIsLoadingLunch] = useState(false);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
@@ -89,7 +86,6 @@ export default function Page() {
 
   const selectedDate = useMemo(() => formatDateForApi(selectedDayOffset), [selectedDayOffset]);
   const selectedDayLabel = useMemo(() => getDateLabel(selectedDayOffset), [selectedDayOffset]);
-  const fallbackRecommendationRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     try {
@@ -114,6 +110,18 @@ export default function Page() {
 
     window.localStorage.setItem(LOCAL_STORAGE_SELECTED_SCHOOL_KEY, JSON.stringify(selectedSchool));
   }, [selectedSchool]);
+
+  useEffect(() => {
+    if (!isSettingsOpen) {
+      document.body.style.overflow = '';
+      return;
+    }
+
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSettingsOpen]);
 
   useEffect(() => {
     const query = schoolQuery.trim();
@@ -152,10 +160,8 @@ export default function Page() {
     if (!selectedSchool?.officeCode || !selectedSchool?.schoolCode) {
       setLunchData(null);
       setLunchSummary(null);
-      setLunchTags([]);
       setRecommendations([]);
       setBridgeComment(null);
-      setIsFallbackRecommendationMode(false);
       setLunchError(null);
       setRecommendationError(null);
       return;
@@ -169,8 +175,7 @@ export default function Page() {
         setLunchError(null);
         setRecommendationError(null);
         setBridgeComment(null);
-        setIsFallbackRecommendationMode(false);
-
+  
         const response = await fetch(
           '/api/recommendations?officeCode=' +
             encodeURIComponent(selectedSchool.officeCode) +
@@ -183,19 +188,10 @@ export default function Page() {
         const payload = (await response.json()) as RecommendationResponse;
 
         if (response.status === 404) {
-          const fallbackResponse = await fetch('/api/recommendations/fallback', { signal: controller.signal });
-          const fallbackPayload = (await fallbackResponse.json()) as RecommendationResponse;
-
-          if (!fallbackResponse.ok) {
-            throw new Error(fallbackPayload.error ?? '추천 정보를 불러오지 못했습니다.');
-          }
-
           setLunchData(null);
           setLunchSummary(null);
-          setLunchTags([]);
-          setRecommendations(fallbackPayload.recommendations ?? []);
-          setBridgeComment(fallbackPayload.bridgeComment ?? '점심 없이도 바로 볼 수 있는 저녁 메뉴예요.');
-          setIsFallbackRecommendationMode(true);
+          setRecommendations([]);
+          setBridgeComment(null);
           setLunchError('오늘 급식 정보가 없어요.');
           setRecommendationError(null);
           return;
@@ -207,19 +203,15 @@ export default function Page() {
 
         setLunchData(payload.lunch ?? null);
         setLunchSummary(payload.lunchSummary ?? null);
-        setLunchTags(payload.lunchTags ?? []);
         setRecommendations(payload.recommendations ?? []);
         setBridgeComment(payload.bridgeComment ?? null);
-        setIsFallbackRecommendationMode(false);
-      } catch (error) {
+        } catch (error) {
         if ((error as Error).name === 'AbortError') return;
         setLunchData(null);
         setLunchSummary(null);
-        setLunchTags([]);
         setRecommendations([]);
         setBridgeComment(null);
-        setIsFallbackRecommendationMode(false);
-        const message = error instanceof Error ? error.message : '추천 정보를 불러오지 못했습니다.';
+          const message = error instanceof Error ? error.message : '추천 정보를 불러오지 못했습니다.';
         setLunchError(message);
         setRecommendationError(message);
       } finally {
@@ -280,71 +272,12 @@ export default function Page() {
             </div>
           </section>
         ) : lunchError ? (
-          <>
-            <section className="status-card space-y-4 text-left">
-              <div className="space-y-2">
-                <h2 className="section-heading text-[1.55rem]">오늘 급식 정보가 없어요.</h2>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Button type="button" variant="outline" onClick={() => setSelectedDayOffset(-1)}>
-                  어제 보기
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setSelectedDayOffset(1)}>
-                  내일 보기
-                </Button>
-                <Button
-                  type="button"
-                  variant="default"
-                  className="sm:col-span-2"
-                  onClick={() => {
-                    setIsFallbackRecommendationMode(true);
-                    fallbackRecommendationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                >
-                  점심 없이 저녁 추천 보기
-                </Button>
-                <Button type="button" variant="secondary" className="sm:col-span-2" onClick={() => setIsSettingsOpen(true)}>
-                  학교 다시 선택
-                </Button>
-              </div>
-            </section>
-
-            {recommendations.length > 0 ? (
-              <section ref={fallbackRecommendationRef} className="space-y-4">
-                <div className="space-y-2">
-                  <h2 className="section-heading">메뉴 추천</h2>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="section-description px-1">옆으로 넘겨 더 보기</p>
-                  <div className="recommendation-scroller overflow-x-auto">
-                    <div className="recommendation-track flex snap-x snap-mandatory gap-4 pr-6">
-                      {recommendations.map((recommendation) => (
-                        <Card key={recommendation.menuId} className="recommendation-card min-w-[320px] max-w-[360px]">
-                          <CardContent className="flex h-full flex-col gap-6 p-7 pt-8">
-                            <div className="space-y-4">
-                              <p className="text-kicker">오늘 저녁 추천</p>
-                              <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
-                            </div>
-
-                            <a
-                              href={recommendation.recipeUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="button-primary mt-auto inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-medium"
-                            >
-                              레시피 보기
-                              <ChevronRight className="ml-2 h-4 w-4" />
-                            </a>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            ) : null}
-          </>
+          <section className="status-card text-left">
+            <div className="space-y-2">
+              <h2 className="section-heading text-[1.55rem]">급식이 없는 날이에요.</h2>
+              <p className="section-description">주말 또는 방학 등의 일정일 수 있어요.</p>
+            </div>
+          </section>
         ) : lunchData && lunchSummary ? (
           <>
             <section className="space-y-4">
@@ -380,14 +313,6 @@ export default function Page() {
                     </div>
                   ))}
                 </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {lunchTags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="pill-subtle px-3 py-1 text-xs font-medium">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
               </Card>
             </section>
 
@@ -411,7 +336,21 @@ export default function Page() {
                 <div className="space-y-3">
                   <Card className="bridge-card">
                     <div className="bridge-card__content">
-                      <p className="bridge-card__quote">“{bridgeComment}”</p>
+                      <div className="bridge-card__quote-wrap">
+                        <span aria-hidden="true" className="bridge-card__mark">
+                          “
+                        </span>
+                        <p className="bridge-card__quote bridge-card__quote--editorial">
+                          {bridgeComment}{' '}
+                          <span
+                            aria-hidden="true"
+                            className="bridge-card__mark bridge-card__mark--inline"
+                            style={{ fontSize: '1.9rem', lineHeight: 1, fontWeight: 400, color: 'rgb(100 116 139 / 0.42)', display: 'inline-block', verticalAlign: '-0.18rem' }}
+                          >
+                            ”
+                          </span>
+                        </p>
+                      </div>
                     </div>
                   </Card>
                   <div className="recommendation-scroller overflow-x-auto">
@@ -445,9 +384,9 @@ export default function Page() {
       </div>
 
       {isSettingsOpen ? (
-        <div className="modal-scrim">
+        <div className="modal-scrim overflow-y-auto overscroll-contain">
           <div className="mx-auto flex h-full w-full max-w-[480px] items-end">
-            <div className="surface-card modal-panel">
+            <div className="surface-card modal-panel max-h-[calc(100vh-3rem)] overflow-y-auto overscroll-contain">
               <div className="section-header items-start">
                 <div className="space-y-1">
                   <p className="text-kicker">학교 설정</p>
@@ -489,13 +428,13 @@ export default function Page() {
                         setIsSettingsOpen(false);
                         setSchoolQuery('');
                       }}
-                      className={cn('option-card', isSelected && 'is-selected')}
+                      className={cn('option-card !justify-between !items-start !h-auto min-h-[72px]', isSelected && 'is-selected')}
                     >
-                      <div className="space-y-1 text-left">
+                      <div className="flex-1 space-y-1 text-left">
                         <p className="text-sm font-medium text-slate-950">{school.schoolName}</p>
                         <p className="text-caption">{isSelected ? '선택 중' : `${school.officeName} · ${school.schoolLevel}`}</p>
                       </div>
-                      {isSelected ? <Check className="h-4.5 w-4.5 text-slate-900" /> : null}
+                      <span className="option-card__check-slot">{isSelected ? <Check className="h-4.5 w-4.5 text-slate-900" /> : null}</span>
                     </Button>
                   );
                 })}

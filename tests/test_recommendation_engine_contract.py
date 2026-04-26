@@ -83,20 +83,15 @@ class RecommendationEngineContractTests(unittest.TestCase):
 
         required_strings = [
             "'/api/recommendations?officeCode='",
-            "'/api/recommendations/fallback'",
             'setRecommendations',
             'isLoadingRecommendations',
             'recommendationError',
-            'isFallbackRecommendationMode',
-            '점심 없이 저녁 추천 보기',
-            '오늘 급식 정보가 없어요.',
+            '급식이 없는 날이에요.',
             '추천을 불러오는 중이에요.',
             'schoolName',
             'bridge-card',
             'bridgeComment',
             '메뉴 추천',
-            '어제 보기',
-            '내일 보기',
         ]
         for item in required_strings:
             self.assertIn(item, content)

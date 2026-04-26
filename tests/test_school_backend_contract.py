@@ -56,10 +56,13 @@ class SchoolBackendContractTests(unittest.TestCase):
             '학교를 검색해 설정해보세요.',
             '오늘 급식을 불러오는 중이에요.',
             '추천을 불러오는 중이에요.',
-            '오늘 급식 정보가 없어요.',
-            '어제 보기',
-            '내일 보기',
-            '학교 다시 선택',
+            '급식이 없는 날이에요.',
+            '주말 또는 방학 등의 일정일 수 있어요.',
+            "document.body.style.overflow = 'hidden'",
+            "document.body.style.overflow = ''",
+            'option-card__check-slot',
+            '!h-auto',
+            'min-h-[72px]',
             'bridgeComment',
         ]
         for item in required_strings:
