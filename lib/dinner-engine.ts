@@ -282,7 +282,9 @@ export function summarizeLunchSignals(menuItems: string[]): LunchSignals {
   };
 }
 
-function buildBridgeComment(summary: LunchSignals) {
+function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
+  const calories = lunch.calories ?? 0;
+
   if (summary.hasFried && summary.hasSpicy) {
     return '점심이 기름지고 자극적이었어서, 저녁은 더 편안한 메뉴들로 골랐어요.';
   }
@@ -296,7 +298,11 @@ function buildBridgeComment(summary: LunchSignals) {
   }
 
   if (summary.mealType === 'starch-heavy') {
-    return '점심이 탄수화물 중심이었어서, 저녁은 단백질 균형을 더한 메뉴들로 골랐어요.';
+    return '점심이 한 그릇으로 든든했어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.';
+  }
+
+  if (summary.mealType === 'hearty-soup' && calories >= 560) {
+    return '점심이 국물 있는 한 끼였어서, 저녁은 너무 무겁지 않게 이어갈 메뉴들로 골랐어요.';
   }
 
   if (summary.proteinPreference === 'diverse-protein') {
@@ -654,7 +660,7 @@ export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecomm
       summaryLabel: getLunchSummaryLabel(lunch, lunchSummary),
     },
     lunchTags: getLunchTags(lunchSummary),
-    bridgeComment: buildBridgeComment(lunchSummary),
+    bridgeComment: buildBridgeComment(lunch, lunchSummary),
     recommendations,
   };
 }

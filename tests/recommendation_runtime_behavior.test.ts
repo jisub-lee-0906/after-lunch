@@ -57,6 +57,7 @@ test('buildDinnerRecommendationPayload derives balanced labels for steady lunche
 
   assert.equal(payload.lunchSummary.densityLabel, '균형 잡힌 구성');
   assert.equal(payload.lunchSummary.summaryLabel, '국물 있는 한 끼');
+  assert.equal(payload.bridgeComment, '점심이 국물 있는 한 끼였어서, 저녁은 너무 무겁지 않게 이어갈 메뉴들로 골랐어요.');
 });
 
 test('buildDinnerRecommendationPayload derives one-plate summary labels for starch-heavy lunches', () => {
@@ -69,6 +70,7 @@ test('buildDinnerRecommendationPayload derives one-plate summary labels for star
 
   assert.equal(payload.lunchSummary.densityLabel, '든든한 구성');
   assert.equal(payload.lunchSummary.summaryLabel, '든든한 한 그릇형');
+  assert.equal(payload.bridgeComment, '점심이 한 그릇으로 든든했어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.');
 });
 
 test('buildDinnerRecommendationPayload derives lighter labels for very simple lunches', () => {
