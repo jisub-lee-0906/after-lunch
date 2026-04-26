@@ -229,6 +229,7 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
       },
       expectedDensityLabel: '든든한 구성',
       expectedSummaryLabel: '기름기 있는 편',
+      expectedBridgeComment: '점심이 조금 진한 편이어서, 저녁은 더 담백한 메뉴들로 골랐어요.',
     },
   ];
 
@@ -236,6 +237,9 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
     const payload = buildDinnerRecommendationPayload(scenario.lunch);
     assert.equal(payload.lunchSummary.densityLabel, scenario.expectedDensityLabel, scenario.name);
     assert.equal(payload.lunchSummary.summaryLabel, scenario.expectedSummaryLabel, scenario.name);
+    if ('expectedBridgeComment' in scenario) {
+      assert.equal(payload.bridgeComment, scenario.expectedBridgeComment, `${scenario.name} bridge comment`);
+    }
   }
 });
 

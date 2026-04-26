@@ -361,7 +361,7 @@ function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
   }
 
   if (profile.summaryLabel === '기름기 있는 편') {
-    return '점심이 조금 무거웠어서, 저녁은 더 담백한 메뉴들로 골랐어요.';
+    return '점심이 조금 진한 편이어서, 저녁은 더 담백한 메뉴들로 골랐어요.';
   }
 
   if (profile.summaryLabel === '매콤하고 든든한 편' || profile.summaryLabel === '매콤한 편') {
