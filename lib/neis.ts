@@ -63,6 +63,7 @@ export function cleanDishName(rawDish: string) {
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\b\d+(?:\.\d+)*\b/g, ' ')
     .replace(/[!*^@#$%]+/g, ' ')
+    .replace(/\s*-\s*[A-Za-z](?=\s|$)/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

@@ -5,11 +5,17 @@ import { buildDinnerRecommendationPayload, buildFallbackDinnerRecommendations, s
 import { GET as schoolsGET } from '../app/api/schools/route';
 import { GET as lunchGET } from '../app/api/lunch/route';
 import { GET as recommendationsGET } from '../app/api/recommendations/route';
+import { cleanDishName } from '../lib/neis';
 
 test('summarizeLunchSignals detects rice_missing from one-plate lunch text', () => {
   const summary = summarizeLunchSignals(['참치마요덮밥', '배추김치']);
   assert.equal(summary.mealType, 'starch-heavy');
   assert.deepEqual(summary.lunchAftertaste, ['rice_missing']);
+});
+
+test('cleanDishName strips trailing single-letter Latin suffix noise from NEIS menu names', () => {
+  assert.equal(cleanDishName('돈까스-J'), '돈까스');
+  assert.equal(cleanDishName('비빔밥-M'), '비빔밥');
 });
 
 test('buildDinnerRecommendationPayload returns three deduped recommendations with non-empty reasons', () => {
