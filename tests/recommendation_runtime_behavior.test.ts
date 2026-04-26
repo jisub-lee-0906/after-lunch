@@ -85,6 +85,72 @@ test('buildDinnerRecommendationPayload derives lighter labels for very simple lu
   assert.equal(payload.lunchSummary.summaryLabel, '담백한 편');
 });
 
+test('buildDinnerRecommendationPayload interprets whole-menu weight before picking persuasive summary labels', () => {
+  const cases = [
+    {
+      name: 'fried fish cutlet lunch should not collapse to bland',
+      lunch: {
+        date: '20260423',
+        calories: 650,
+        menuItems: ['보리밥', '버섯샤브샤브', '두부면야채무침', '생선까스 타르타르소스', '깍두기', '망고푸딩'],
+        rawMenu: '보리밥<br/>버섯샤브샤브<br/>두부면야채무침<br/>생선까스 타르타르소스<br/>깍두기<br/>망고푸딩',
+      },
+      expectedDensityLabel: '균형 잡힌 구성',
+      expectedSummaryLabel: '기름진 편',
+    },
+    {
+      name: 'spaghetti lunch should count as starch-heavy whole plate',
+      lunch: {
+        date: '20260422',
+        calories: 700,
+        menuItems: ['미니찹쌀밥 김자반', '스파게티', '갈릭파이', '배추김치', '사과쥬스'],
+        rawMenu: '미니찹쌀밥 김자반<br/>스파게티<br/>갈릭파이<br/>배추김치<br/>사과쥬스',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 그릇형',
+    },
+    {
+      name: 'spicy pork plus hotdog lunch should stay heavy instead of spicy-only',
+      lunch: {
+        date: '20260424',
+        calories: 840,
+        menuItems: ['찰보리밥', '연두부새우젓국', '숙주나물무침', '제육볶음', '모짜렐라핫도그', '깍두기', '자몽주스'],
+        rawMenu: '찰보리밥<br/>연두부새우젓국<br/>숙주나물무침<br/>제육볶음<br/>모짜렐라핫도그<br/>깍두기<br/>자몽주스',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '매콤하고 든든한 편',
+    },
+    {
+      name: 'high-calorie soup lunch with chicken main should read as hearty meal',
+      lunch: {
+        date: '20260421',
+        calories: 780,
+        menuItems: ['발아현미밥', '애호박찌개', '안동식찜닭', '진미채양념구이', '열무김치', '포도'],
+        rawMenu: '발아현미밥<br/>애호박찌개<br/>안동식찜닭<br/>진미채양념구이<br/>열무김치<br/>포도',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
+    {
+      name: 'soup plus braised chicken lunch should not be reduced to broth-only copy',
+      lunch: {
+        date: '20260424',
+        calories: 1040,
+        menuItems: ['백미밥', '물만두국', '묵은지찜닭', '쑥갓두부무침', '새송이버섯볶음', '깍두기'],
+        rawMenu: '백미밥<br/>물만두국<br/>묵은지찜닭<br/>쑥갓두부무침<br/>새송이버섯볶음<br/>깍두기',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
+  ];
+
+  for (const scenario of cases) {
+    const payload = buildDinnerRecommendationPayload(scenario.lunch);
+    assert.equal(payload.lunchSummary.densityLabel, scenario.expectedDensityLabel, scenario.name);
+    assert.equal(payload.lunchSummary.summaryLabel, scenario.expectedSummaryLabel, scenario.name);
+  }
+});
+
 test('buildFallbackDinnerRecommendations returns three recommendations', () => {
   const payload = buildFallbackDinnerRecommendations();
   assert.equal(payload.recommendations.length, 3);

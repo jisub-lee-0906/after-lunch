@@ -56,8 +56,14 @@ const primaryProteinKeywords: Record<string, string[]> = {
   돼지고기: ['돼지', '돈까스', '돈육', '제육', '수육', '보쌈'],
   소고기: ['쇠고기', '소고기', '불고기', '갈비', '한우'],
 };
-const starchHeavyKeywords = ['볶음밥', '짜장', '카레', '파스타', '떡볶이', '덮밥', '비빔밥', '쫄면'];
+const friedKeywords = ['튀김', '돈까스', '생선까스', '까스', '카츠', '탕수육', '치킨', '가라아게', '전', '크로켓', '멘보샤', '후라이', '핫도그'];
+const greasyMainKeywords = ['튀김', '돈까스', '생선까스', '까스', '카츠', '탕수육', '치킨', '가라아게', '크로켓', '멘보샤', '후라이'];
+const spicyKeywords = ['매콤', '마라', '짬뽕', '김치찌개', '떡볶이', '불닭', '제육', '육개장'];
+const heavyKeywords = ['돈까스', '생선까스', '까스', '카츠', '짜장', '카레', '볶음밥', '갈비', '불고기', '찌개', '떡볶이', '파스타', '스파게티', '마라탕', '핫도그', '비엔나', '떡갈비', '찜닭'];
+const starchHeavyKeywords = ['볶음밥', '짜장', '카레', '파스타', '스파게티', '떡볶이', '덮밥', '비빔밥', '쫄면'];
 const heartySoupKeywords = ['갈비탕', '순두부', '찌개', '국', '탕', '수제비', '쌀국수', '된장국', '미역국'];
+const processedHeavyKeywords = ['핫도그', '비엔나', '소시지', '햄', '떡갈비', '강정', '텐더'];
+const proteinMainKeywords = ['불고기', '갈비', '찜닭', '제육', '돈까스', '생선까스', '고등어', '조림', '볶음', '떡갈비', '치킨', '핫도그'];
 const NOISE_KEYWORDS = [
   '정식',
   '볶음밥',
@@ -133,6 +139,74 @@ function classifyProteinPreference(mealType: LunchSignals['mealType'], proteinTa
   if (mealType === 'fried-heavy' || mealType === 'starch-heavy') return 'lighter-protein' as const;
   if (proteinTags.length >= 2) return 'diverse-protein' as const;
   return 'comforting' as const;
+}
+
+function includesAny(text: string, keywords: string[]) {
+  return keywords.some((keyword) => text.includes(keyword));
+}
+
+function scoreMatchedItems(menuItems: string[], keywords: string[]) {
+  return menuItems.reduce((count, item) => count + (includesAny(item, keywords) ? 1 : 0), 0);
+}
+
+function getLunchProfile(lunch: NeisLunch, summary: LunchSignals) {
+  const menuItems = lunch.menuItems;
+  const menuText = menuItems.join(' ');
+  const calories = lunch.calories ?? 0;
+  const friedCount = scoreMatchedItems(menuItems, friedKeywords);
+  const greasyMainCount = scoreMatchedItems(menuItems, greasyMainKeywords);
+  const spicyCount = scoreMatchedItems(menuItems, spicyKeywords);
+  const starchCount = scoreMatchedItems(menuItems, starchHeavyKeywords);
+  const soupCount = scoreMatchedItems(menuItems, heartySoupKeywords);
+  const processedCount = scoreMatchedItems(menuItems, processedHeavyKeywords);
+  const proteinMainCount = scoreMatchedItems(menuItems, proteinMainKeywords);
+  const proteinTagCount = summary.proteinTags.length;
+  const calorieWeight = calories >= 980 ? 3 : calories >= 760 ? 2 : calories >= 620 ? 1 : 0;
+  const heavyScore =
+    friedCount * 2 +
+    starchCount * 2 +
+    processedCount * 2 +
+    proteinMainCount * 2 +
+    proteinTagCount +
+    calorieWeight +
+    (summary.isHeavy ? 1 : 0);
+  const soupScore = soupCount > 0 ? soupCount + (includesAny(menuText, SOUP_KEYWORDS) ? 1 : 0) : 0;
+  const densityScore = friedCount * 2 + starchCount * 2 + processedCount * 2 + proteinMainCount + calorieWeight + (summary.isHeavy ? 1 : 0);
+
+  const densityLabel =
+    densityScore >= 6 ||
+    (starchCount >= 1 && calories >= 620) ||
+    (calories >= 760 && (proteinMainCount >= 1 || processedCount >= 1 || friedCount >= 1 || starchCount >= 1))
+      ? '든든한 구성'
+      : densityScore >= 2 || calories >= 560
+        ? '균형 잡힌 구성'
+        : '가벼운 구성';
+
+  let summaryLabel: string;
+  if (greasyMainCount >= 1 && spicyCount >= 1) {
+    summaryLabel = heavyScore >= 5 ? '기름지고 매콤한 편' : '매콤한 편';
+  } else if (spicyCount >= 1 && heavyScore >= 5) {
+    summaryLabel = '매콤하고 든든한 편';
+  } else if (starchCount >= 1 && heavyScore >= 4) {
+    summaryLabel = '든든한 한 그릇형';
+  } else if (greasyMainCount >= 1 || (friedCount >= 1 && spicyCount === 0)) {
+    summaryLabel = '기름진 편';
+  } else if (heavyScore >= 6) {
+    summaryLabel = '든든한 한 끼';
+  } else if (soupScore >= 2 && heavyScore <= 4 && calories >= 560 && calories < 760) {
+    summaryLabel = '국물 있는 한 끼';
+  } else if (spicyCount >= 1) {
+    summaryLabel = '매콤한 편';
+  } else {
+    summaryLabel = '담백한 편';
+  }
+
+  return {
+    densityLabel,
+    summaryLabel,
+    heavyScore,
+    soupScore,
+  };
 }
 
 function deriveLunchAftertaste(summary: Pick<LunchSignals, 'hasFried' | 'hasSpicy' | 'isHeavy' | 'keywords'> & { menuText: string }) {
@@ -258,13 +332,10 @@ function transitionMatchBonus(dinner: ProductionDinner, summary: LunchSignals) {
 
 export function summarizeLunchSignals(menuItems: string[]): LunchSignals {
   const menuText = menuItems.join(' ');
-  const friedKeywords = ['튀김', '돈까스', '탕수육', '치킨', '가라아게', '전', '크로켓', '멘보샤', '후라이'];
-  const spicyKeywords = ['매콤', '마라', '짬뽕', '김치찌개', '떡볶이', '불닭', '제육', '육개장'];
-  const heavyKeywords = ['돈까스', '짜장', '카레', '볶음밥', '갈비', '불고기', '찌개', '떡볶이', '파스타', '마라탕'];
 
-  const hasFried = friedKeywords.some((keyword) => menuText.includes(keyword));
-  const hasSpicy = spicyKeywords.some((keyword) => menuText.includes(keyword));
-  const isHeavy = heavyKeywords.some((keyword) => menuText.includes(keyword));
+  const hasFried = includesAny(menuText, friedKeywords);
+  const hasSpicy = includesAny(menuText, spicyKeywords);
+  const isHeavy = includesAny(menuText, heavyKeywords);
   const proteinTags = extractLunchProteinTags(menuItems);
   const mealType = classifyMealType(menuItems, { hasFried, isHeavy });
   const keywords = extractLunchKeywords(menuItems);
@@ -283,25 +354,29 @@ export function summarizeLunchSignals(menuItems: string[]): LunchSignals {
 }
 
 function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
-  const calories = lunch.calories ?? 0;
+  const profile = getLunchProfile(lunch, summary);
 
-  if (summary.hasFried && summary.hasSpicy) {
+  if (profile.summaryLabel === '기름지고 매콤한 편') {
     return '점심이 기름지고 자극적이었어서, 저녁은 더 편안한 메뉴들로 골랐어요.';
   }
 
-  if (summary.hasFried) {
+  if (profile.summaryLabel === '기름진 편') {
     return '점심이 조금 무거웠어서, 저녁은 더 담백한 메뉴들로 골랐어요.';
   }
 
-  if (summary.hasSpicy) {
+  if (profile.summaryLabel === '매콤하고 든든한 편' || profile.summaryLabel === '매콤한 편') {
     return '점심이 매콤했어서, 저녁은 자극을 낮춘 메뉴들로 골랐어요.';
   }
 
-  if (summary.mealType === 'starch-heavy') {
+  if (profile.summaryLabel === '든든한 한 그릇형') {
     return '점심이 한 그릇으로 든든했어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.';
   }
 
-  if (summary.mealType === 'hearty-soup' && calories >= 560) {
+  if (profile.summaryLabel === '든든한 한 끼') {
+    return '점심이 든든한 한 끼였어서, 저녁은 조금 더 편안하게 이어갈 메뉴들로 골랐어요.';
+  }
+
+  if (profile.summaryLabel === '국물 있는 한 끼') {
     return '점심이 국물 있는 한 끼였어서, 저녁은 너무 무겁지 않게 이어갈 메뉴들로 골랐어요.';
   }
 
@@ -326,47 +401,11 @@ function getLunchTags(summary: LunchSignals) {
 }
 
 function getLunchDensityLabel(lunch: NeisLunch, summary: LunchSignals) {
-  const calories = lunch.calories ?? 0;
-
-  if (summary.hasFried || summary.isHeavy || summary.mealType === 'starch-heavy' || calories >= 760) {
-    return '든든한 구성';
-  }
-
-  if (summary.mealType === 'balanced' || calories >= 560) {
-    return '균형 잡힌 구성';
-  }
-
-  return '가벼운 구성';
+  return getLunchProfile(lunch, summary).densityLabel;
 }
 
 function getLunchSummaryLabel(lunch: NeisLunch, summary: LunchSignals) {
-  const calories = lunch.calories ?? 0;
-
-  if (summary.hasFried && summary.hasSpicy) {
-    return '기름지고 매콤한 편';
-  }
-
-  if (summary.hasFried) {
-    return '기름진 편';
-  }
-
-  if (summary.hasSpicy && summary.isHeavy) {
-    return '매콤하고 든든한 편';
-  }
-
-  if (summary.hasSpicy) {
-    return '매콤한 편';
-  }
-
-  if (summary.mealType === 'starch-heavy') {
-    return '든든한 한 그릇형';
-  }
-
-  if (summary.mealType === 'hearty-soup' && calories >= 560) {
-    return '국물 있는 한 끼';
-  }
-
-  return '담백한 편';
+  return getLunchProfile(lunch, summary).summaryLabel;
 }
 
 function proteinDiversityBonus(dinner: ProductionDinner, summary: LunchSignals) {
