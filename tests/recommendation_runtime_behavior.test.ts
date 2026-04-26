@@ -35,6 +35,30 @@ test('buildDinnerRecommendationPayload returns three deduped recommendations wit
   }
 });
 
+test('buildDinnerRecommendationPayload derives persuasive density and summary labels for fried spicy lunches', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 820,
+    menuItems: ['돈까스', '떡볶이', '배추김치'],
+    rawMenu: '돈까스<br/>떡볶이<br/>배추김치',
+  });
+
+  assert.equal(payload.lunchSummary.densityLabel, '든든한 구성');
+  assert.equal(payload.lunchSummary.summaryLabel, '기름지고 매콤한 편');
+});
+
+test('buildDinnerRecommendationPayload derives calmer labels for lighter balanced lunches', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 520,
+    menuItems: ['맑은두부국', '계란찜', '오이무침'],
+    rawMenu: '맑은두부국<br/>계란찜<br/>오이무침',
+  });
+
+  assert.equal(payload.lunchSummary.densityLabel, '가벼운 구성');
+  assert.equal(payload.lunchSummary.summaryLabel, '담백한 편');
+});
+
 test('buildFallbackDinnerRecommendations returns three recommendations', () => {
   const payload = buildFallbackDinnerRecommendations();
   assert.equal(payload.recommendations.length, 3);

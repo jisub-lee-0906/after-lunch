@@ -34,6 +34,8 @@ export type DinnerRecommendationPayload = {
     hasFried: boolean;
     hasSpicy: boolean;
     isHeavy: boolean;
+    densityLabel: string;
+    summaryLabel: string;
   };
   lunchTags: string[];
   bridgeComment: string;
@@ -315,6 +317,42 @@ function getLunchTags(summary: LunchSignals) {
   if (summary.isHeavy) tags.push('든든한 구성');
   if (tags.length === 0) tags.push('균형 잡힌 구성');
   return tags;
+}
+
+function getLunchDensityLabel(summary: LunchSignals) {
+  if (summary.hasFried || summary.isHeavy || summary.mealType === 'starch-heavy') {
+    return '든든한 구성';
+  }
+
+  if (summary.mealType === 'hearty-soup') {
+    return '가벼운 구성';
+  }
+
+  return '가벼운 구성';
+}
+
+function getLunchSummaryLabel(summary: LunchSignals) {
+  if (summary.hasFried && summary.hasSpicy) {
+    return '기름지고 매콤한 편';
+  }
+
+  if (summary.hasFried) {
+    return '기름진 편';
+  }
+
+  if (summary.hasSpicy && summary.isHeavy) {
+    return '매콤하고 든든한 편';
+  }
+
+  if (summary.hasSpicy) {
+    return '매콤한 편';
+  }
+
+  if (summary.mealType === 'starch-heavy') {
+    return '탄수화물 중심';
+  }
+
+  return '담백한 편';
 }
 
 function proteinDiversityBonus(dinner: ProductionDinner, summary: LunchSignals) {
@@ -604,6 +642,8 @@ export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecomm
       hasFried: lunchSummary.hasFried,
       hasSpicy: lunchSummary.hasSpicy,
       isHeavy: lunchSummary.isHeavy,
+      densityLabel: getLunchDensityLabel(lunchSummary),
+      summaryLabel: getLunchSummaryLabel(lunchSummary),
     },
     lunchTags: getLunchTags(lunchSummary),
     bridgeComment: buildBridgeComment(lunchSummary),

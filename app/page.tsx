@@ -27,6 +27,8 @@ type LunchSummary = {
   hasFried: boolean;
   hasSpicy: boolean;
   isHeavy: boolean;
+  densityLabel: string;
+  summaryLabel: string;
 };
 
 type Recommendation = {
@@ -290,13 +292,13 @@ export default function Page() {
                 <div className="metric-card">
                   <p className="text-caption">식단 밀도</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                    {lunchSummary.isHeavy ? '든든한 구성' : '가벼운 구성'}
+                    {lunchSummary.densityLabel}
                   </p>
                 </div>
                 <div className="metric-card">
                   <p className="text-caption">식단 요약</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">
-                    {lunchSummary.hasFried || lunchSummary.hasSpicy ? '기름짐과 매콤함' : '균형 잡힌 구성'}
+                    {lunchSummary.summaryLabel}
                   </p>
                 </div>
               </div>
