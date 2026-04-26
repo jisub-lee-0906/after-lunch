@@ -29,6 +29,7 @@ app_seed_deduped*.json
 *_report.json
 
 # Iterative analysis / verification notes generated during dataset experiments
+.analysis/
 *_report_ko.md
 *_scope_recommendation_ko.md
 dataset_quality_review_and_plan_ko.md
