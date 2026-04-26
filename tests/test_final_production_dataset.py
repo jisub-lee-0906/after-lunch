@@ -1,11 +1,20 @@
 import unittest
 
 from scripts.final_production_dataset import (
+    build_bridge_tags,
     build_final_record,
     build_menu_id,
+    build_parent_pitch,
+    build_transition_match_plan,
     classify_calorie_profile,
+    classify_comfort_level,
+    classify_dinner_fit,
+    classify_dinner_response,
+    classify_lunch_aftertaste,
+    classify_meal_style,
     is_production_ready_row,
     is_stable_operational_row,
+    load_manual_taxonomy_overrides,
     select_final_dataset_rows,
     select_stable_operational_rows,
 )
@@ -208,10 +217,280 @@ class FinalProductionDatasetTests(unittest.TestCase):
         self.assertEqual(record['display_name'], '돼지갈비찜과 쇠고기미역국 정식')
         self.assertEqual(record['main_dishes'], ['돼지갈비찜', '쇠고기미역국'])
         self.assertEqual(record['protein_tags'], ['돼지고기', '소고기'])
+        self.assertEqual(record['taxonomy']['meal_style'], 'braised_set')
+        self.assertEqual(record['taxonomy']['comfort_level'], 'hearty')
+        self.assertEqual(record['taxonomy']['dinner_fit'], 'special')
+        self.assertTrue(record['taxonomy']['parent_pitch'])
+        self.assertTrue(record['bridge_tags'])
+        self.assertTrue(record['dinner_response'])
         self.assertEqual(record['nutrition']['calories']['avg'], 840)
         self.assertEqual(record['popularity']['occurrence_count'], 90)
         self.assertEqual(record['quality']['school_level_coverage'], 3)
         self.assertEqual(record['quality']['calorie_profile'], 'stable')
+
+    def test_manual_taxonomy_override_file_loads_known_rows(self):
+        overrides = load_manual_taxonomy_overrides()
+        self.assertEqual(len(overrides), 622)
+        self.assertIn('yn-ca1918d32f24', overrides)
+        self.assertEqual(overrides['yn-ca1918d32f24']['meal_style'], 'stew_set')
+        self.assertEqual(overrides['yn-ca1918d32f24']['parent_pitch'], '국물 있는 균형 한 끼')
+        self.assertIn('yn-95d77a07dc44', overrides)
+        self.assertEqual(overrides['yn-95d77a07dc44']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-95d77a07dc44']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-95d77a07dc44']['parent_pitch'], '매콤한 메인요리 중심 한 끼')
+        self.assertIn('yn-c3c566908d01', overrides)
+        self.assertEqual(overrides['yn-c3c566908d01']['meal_style'], 'one_plate')
+        self.assertEqual(overrides['yn-c3c566908d01']['dinner_fit'], 'flexible')
+        self.assertEqual(overrides['yn-c3c566908d01']['parent_pitch'], '한 그릇으로 든든하게 고르기 좋은 메뉴')
+        self.assertIn('yn-e1550441bee6', overrides)
+        self.assertEqual(overrides['yn-e1550441bee6']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-e1550441bee6']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-e1550441bee6']['parent_pitch'], '매콤한 불고기로 무난하게 이어가기 좋은 한 끼')
+        self.assertIn('yn-5e22bd204f2b', overrides)
+        self.assertEqual(overrides['yn-5e22bd204f2b']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-5e22bd204f2b']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-5e22bd204f2b']['parent_pitch'], '제육볶음 중심으로 익숙하게 고르기 좋은 한 끼')
+        self.assertIn('yn-2771351c3a74', overrides)
+        self.assertEqual(overrides['yn-2771351c3a74']['meal_style'], 'braised_set')
+        self.assertEqual(overrides['yn-2771351c3a74']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-2771351c3a74']['parent_pitch'], '등갈비김치찜과 미역국이 함께 있는 든든한 한 끼')
+        self.assertIn('yn-22f9224d6f56', overrides)
+        self.assertEqual(overrides['yn-22f9224d6f56']['meal_style'], 'one_plate')
+        self.assertEqual(overrides['yn-22f9224d6f56']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-22f9224d6f56']['parent_pitch'], '카레와 새우튀김으로 만족감 있는 한 끼')
+        self.assertIn('yn-9fa34b5087da', overrides)
+        self.assertEqual(overrides['yn-9fa34b5087da']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-9fa34b5087da']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-9fa34b5087da']['parent_pitch'], '제육볶음 중심에 닭곰탕이 곁들여진 든든한 한 끼')
+        self.assertIn('yn-78a8a219f841', overrides)
+        self.assertEqual(overrides['yn-78a8a219f841']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-78a8a219f841']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-78a8a219f841']['parent_pitch'], '돼지수육으로 무난하게 고르기 좋은 한 끼')
+        self.assertIn('yn-298253e216da', overrides)
+        self.assertEqual(overrides['yn-298253e216da']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-298253e216da']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-298253e216da']['parent_pitch'], '닭갈비 중심에 미역국이 곁들여진 든든한 한 끼')
+        self.assertIn('yn-c028de418f05', overrides)
+        self.assertEqual(overrides['yn-c028de418f05']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-c028de418f05']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-c028de418f05']['parent_pitch'], '두부조림 중심에 닭곰탕이 곁들여진 익숙한 한 끼')
+        self.assertIn('yn-49afbe82e725', overrides)
+        self.assertEqual(overrides['yn-49afbe82e725']['meal_style'], 'braised_set')
+        self.assertEqual(overrides['yn-49afbe82e725']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-49afbe82e725']['parent_pitch'], '돼지갈비찜과 아욱국이 함께 있는 든든한 한 끼')
+        self.assertIn('yn-2f1dc802b838', overrides)
+        self.assertEqual(overrides['yn-2f1dc802b838']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-2f1dc802b838']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-2f1dc802b838']['parent_pitch'], '제육볶음 중심으로 무난하게 이어가기 좋은 한 끼')
+        self.assertIn('yn-f5dc86cdc863', overrides)
+        self.assertEqual(overrides['yn-f5dc86cdc863']['meal_style'], 'stew_set')
+        self.assertEqual(overrides['yn-f5dc86cdc863']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-f5dc86cdc863']['parent_pitch'], '우렁살된장찌개로 무난하게 고르기 좋은 한 끼')
+        self.assertIn('yn-d076f5aa396b', overrides)
+        self.assertEqual(overrides['yn-d076f5aa396b']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-d076f5aa396b']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-d076f5aa396b']['parent_pitch'], '코다리강정 중심에 떡국이 곁들여진 든든한 한 끼')
+        self.assertIn('yn-ac59477e68a5', overrides)
+        self.assertEqual(overrides['yn-ac59477e68a5']['meal_style'], 'main_side_set')
+        self.assertEqual(overrides['yn-ac59477e68a5']['dinner_fit'], 'everyday')
+        self.assertEqual(overrides['yn-ac59477e68a5']['parent_pitch'], '주꾸미삼겹살볶음으로 든든하게 이어가기 좋은 한 끼')
+        self.assertIn('yn-b4af159afeef', overrides)
+        self.assertEqual(overrides['yn-b4af159afeef']['meal_style'], 'one_plate')
+        self.assertEqual(overrides['yn-b4af159afeef']['dinner_fit'], 'special')
+        self.assertEqual(overrides['yn-b4af159afeef']['parent_pitch'], '치킨텐더와 카레라이스로 만족감 있는 한 끼')
+
+    def test_taxonomy_classifiers_return_parent_facing_labels(self):
+        row = {
+            'recommend_name': '김치볶음밥과 계란후라이 정식',
+            'representative_main_dishes': ['김치볶음밥', '계란후라이'],
+            'summary_tags': {'has_fried': True, 'has_spicy': True, 'main_proteins': ['가금류'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 768,
+            'occurrence_count': 180,
+        }
+        self.assertEqual(classify_meal_style(row), 'one_plate')
+        self.assertEqual(classify_comfort_level(row), 'hearty')
+        self.assertEqual(classify_dinner_fit(row), 'flexible')
+        taxonomy = {
+            'meal_style': classify_meal_style(row),
+            'comfort_level': classify_comfort_level(row),
+            'dinner_fit': classify_dinner_fit(row),
+        }
+        self.assertTrue(build_parent_pitch(row, taxonomy))
+
+    def test_taxonomy_classifiers_handle_main_plus_soup_combos_more_appropriately(self):
+        row = {
+            'recommend_name': '제육볶음과 건새우아욱된장국 정식',
+            'representative_main_dishes': ['제육볶음', '건새우아욱된장국'],
+            'summary_tags': {'has_fried': False, 'has_spicy': True, 'main_proteins': ['돼지고기', '해산물'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 730,
+            'occurrence_count': 210,
+        }
+        self.assertEqual(classify_meal_style(row), 'main_side_set')
+        self.assertEqual(classify_comfort_level(row), 'balanced')
+        self.assertEqual(classify_dinner_fit(row), 'everyday')
+
+    def test_taxonomy_classifiers_treat_egg_side_menus_as_everyday_main_side(self):
+        row = {
+            'recommend_name': '달걀찜 정식',
+            'representative_main_dishes': ['달걀찜'],
+            'summary_tags': {'has_fried': False, 'has_spicy': False, 'main_proteins': ['가금류'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 640,
+            'occurrence_count': 128,
+        }
+        self.assertEqual(classify_meal_style(row), 'main_side_set')
+        self.assertEqual(classify_comfort_level(row), 'light')
+        self.assertEqual(classify_dinner_fit(row), 'everyday')
+
+    def test_taxonomy_classifiers_keep_spicy_stews_out_of_noodle_soup_bucket(self):
+        row = {
+            'recommend_name': '짬뽕순두부찌개 정식',
+            'representative_main_dishes': ['짬뽕순두부찌개'],
+            'summary_tags': {'has_fried': False, 'has_spicy': True, 'main_proteins': ['해산물'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 790,
+            'occurrence_count': 109,
+        }
+        self.assertEqual(classify_meal_style(row), 'stew_set')
+        self.assertEqual(classify_comfort_level(row), 'hearty')
+        self.assertEqual(classify_dinner_fit(row), 'flexible')
+
+    def test_taxonomy_classifiers_mark_familiar_bowls_and_gomtang_as_everyday(self):
+        deopbap_row = {
+            'recommend_name': '참치마요덮밥 정식',
+            'representative_main_dishes': ['참치마요덮밥'],
+            'summary_tags': {'has_fried': False, 'has_spicy': False, 'main_proteins': ['해산물'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 760,
+            'occurrence_count': 120,
+        }
+        gomtang_row = {
+            'recommend_name': '한우갈비탕 정식',
+            'representative_main_dishes': ['한우갈비탕'],
+            'summary_tags': {'has_fried': False, 'has_spicy': False, 'main_proteins': ['소고기'], 'prep_difficulty': 'High'},
+            'calories_avg': 611,
+            'occurrence_count': 414,
+        }
+        self.assertEqual(classify_comfort_level(deopbap_row), 'balanced')
+        self.assertEqual(classify_dinner_fit(deopbap_row), 'everyday')
+        self.assertEqual(classify_comfort_level(gomtang_row), 'hearty')
+        self.assertEqual(classify_dinner_fit(gomtang_row), 'special')
+
+    def test_build_bridge_tags_captures_reset_vs_comfort_roles(self):
+        reset_row = {
+            'recommend_name': '콩가루배추국 정식',
+            'representative_main_dishes': ['콩가루배추국'],
+            'summary_tags': {'has_fried': False, 'has_spicy': False, 'main_proteins': ['콩/두부'], 'prep_difficulty': 'Low'},
+            'calories_avg': 540,
+            'occurrence_count': 190,
+        }
+        comfort_row = {
+            'recommend_name': '치킨텐더와 카레라이스 정식',
+            'representative_main_dishes': ['치킨텐더', '카레라이스'],
+            'summary_tags': {'has_fried': True, 'has_spicy': False, 'main_proteins': ['가금류'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 920,
+            'occurrence_count': 34,
+        }
+        reset_taxonomy = {
+            'meal_style': classify_meal_style(reset_row),
+            'comfort_level': classify_comfort_level(reset_row),
+            'dinner_fit': classify_dinner_fit(reset_row),
+        }
+        comfort_taxonomy = {
+            'meal_style': classify_meal_style(comfort_row),
+            'comfort_level': classify_comfort_level(comfort_row),
+            'dinner_fit': classify_dinner_fit(comfort_row),
+        }
+        self.assertEqual(build_bridge_tags(reset_row, reset_taxonomy), ['spice_reset', 'grease_reset', 'daily_reset'])
+        self.assertEqual(build_bridge_tags(comfort_row, comfort_taxonomy), ['comfort_push'])
+
+    def test_build_bridge_tags_marks_rice_anchor_for_main_side_sets(self):
+        row = {
+            'recommend_name': '제육볶음과 건새우아욱된장국 정식',
+            'representative_main_dishes': ['제육볶음', '건새우아욱된장국'],
+            'summary_tags': {'has_fried': False, 'has_spicy': True, 'main_proteins': ['돼지고기', '해산물'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 730,
+            'occurrence_count': 210,
+        }
+        taxonomy = {
+            'meal_style': classify_meal_style(row),
+            'comfort_level': classify_comfort_level(row),
+            'dinner_fit': classify_dinner_fit(row),
+        }
+        bridge_tags = build_bridge_tags(row, taxonomy)
+        self.assertIn('rice_anchor', bridge_tags)
+        self.assertIn('daily_reset', bridge_tags)
+
+    def test_classify_lunch_aftertaste_detects_noodle_and_grease_fatigue(self):
+        lunch_signals = {
+            'has_fried': True,
+            'has_spicy': False,
+            'is_heavy': True,
+            'meal_items': ['짜장면', '탕수육', '단무지'],
+        }
+        self.assertEqual(classify_lunch_aftertaste(lunch_signals), ['greasy_heavy', 'noodle_fatigue'])
+
+    def test_classify_lunch_aftertaste_detects_spicy_heavy_and_comfort_saturated(self):
+        lunch_signals = {
+            'has_fried': True,
+            'has_spicy': True,
+            'is_heavy': True,
+            'meal_items': ['마라탕', '치킨텐더', '볶음밥'],
+        }
+        self.assertEqual(classify_lunch_aftertaste(lunch_signals), ['spicy_heavy', 'comfort_saturated'])
+
+    def test_classify_dinner_response_returns_reset_direction_for_light_soup(self):
+        row = {
+            'recommend_name': '콩가루배추국 정식',
+            'representative_main_dishes': ['콩가루배추국'],
+            'summary_tags': {'has_fried': False, 'has_spicy': False, 'main_proteins': ['콩/두부'], 'prep_difficulty': 'Low'},
+            'calories_avg': 540,
+            'occurrence_count': 190,
+        }
+        taxonomy = {
+            'meal_style': classify_meal_style(row),
+            'comfort_level': classify_comfort_level(row),
+            'dinner_fit': classify_dinner_fit(row),
+        }
+        bridge_tags = build_bridge_tags(row, taxonomy)
+        self.assertEqual(classify_dinner_response(row, taxonomy, bridge_tags), ['bland_reset', 'broth_reset', 'daily_stabilizer'])
+
+    def test_classify_dinner_response_returns_treat_continuation_for_comfort_menu(self):
+        row = {
+            'recommend_name': '치킨텐더와 카레라이스 정식',
+            'representative_main_dishes': ['치킨텐더', '카레라이스'],
+            'summary_tags': {'has_fried': True, 'has_spicy': False, 'main_proteins': ['가금류'], 'prep_difficulty': 'Mid'},
+            'calories_avg': 920,
+            'occurrence_count': 34,
+        }
+        taxonomy = {
+            'meal_style': classify_meal_style(row),
+            'comfort_level': classify_comfort_level(row),
+            'dinner_fit': classify_dinner_fit(row),
+        }
+        bridge_tags = build_bridge_tags(row, taxonomy)
+        self.assertEqual(classify_dinner_response(row, taxonomy, bridge_tags), ['treat_continuation'])
+
+    def test_build_transition_match_plan_prioritizes_reset_for_greasy_noodle_lunch(self):
+        lunch_aftertaste = ['greasy_heavy', 'noodle_fatigue']
+        dinner_response = ['rice_anchor', 'broth_reset', 'daily_stabilizer']
+        match_plan = build_transition_match_plan(lunch_aftertaste, dinner_response)
+        self.assertEqual(match_plan['primary_needs'], ['broth_reset', 'rice_anchor'])
+        self.assertEqual(match_plan['matched_responses'], ['broth_reset', 'rice_anchor'])
+        self.assertEqual(match_plan['fit_label'], 'strong')
+
+    def test_build_transition_match_plan_prioritizes_bland_reset_for_spicy_lunch(self):
+        lunch_aftertaste = ['spicy_heavy', 'comfort_saturated']
+        dinner_response = ['bland_reset', 'daily_stabilizer']
+        match_plan = build_transition_match_plan(lunch_aftertaste, dinner_response)
+        self.assertEqual(match_plan['primary_needs'], ['bland_reset', 'daily_stabilizer'])
+        self.assertEqual(match_plan['matched_responses'], ['bland_reset', 'daily_stabilizer'])
+        self.assertEqual(match_plan['fit_label'], 'strong')
+
+    def test_build_transition_match_plan_marks_partial_fit_when_only_one_need_matches(self):
+        lunch_aftertaste = ['greasy_heavy', 'comfort_saturated']
+        dinner_response = ['treat_continuation']
+        match_plan = build_transition_match_plan(lunch_aftertaste, dinner_response)
+        self.assertEqual(match_plan['primary_needs'], ['broth_reset', 'daily_stabilizer'])
+        self.assertEqual(match_plan['matched_responses'], ['treat_continuation'])
+        self.assertEqual(match_plan['fit_label'], 'partial')
 
 
 if __name__ == '__main__':
