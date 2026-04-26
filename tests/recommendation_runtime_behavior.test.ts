@@ -164,6 +164,39 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
       expectedDensityLabel: '든든한 구성',
       expectedSummaryLabel: '든든한 한 끼',
     },
+    {
+      name: 'hamburg steak lunch should feel hearty instead of bland',
+      lunch: {
+        date: '20260423',
+        calories: 842,
+        menuItems: ['차수수밥', '쇠고기무국', '비빔만두', '간장계란함박', '배추김치'],
+        rawMenu: '차수수밥<br/>쇠고기무국<br/>비빔만두<br/>간장계란함박<br/>배추김치',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
+    {
+      name: 'spicy pork grill lunch should not stay bland',
+      lunch: {
+        date: '20260421',
+        calories: 793,
+        menuItems: ['칼슘찹쌀밥', '조랭이떡국', '청경채무침', '삼겹살고추장구이', '배추김치', '파인애플'],
+        rawMenu: '칼슘찹쌀밥<br/>조랭이떡국<br/>청경채무침<br/>삼겹살고추장구이<br/>배추김치<br/>파인애플',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '매콤하고 든든한 편',
+    },
+    {
+      name: 'duck ssam with mapo tofu should read as hearty lunch',
+      lunch: {
+        date: '20260417',
+        calories: 760,
+        menuItems: ['칼슘찹쌀밥', '시금치된장국', '오리쌈', '마파두부', '배추김치'],
+        rawMenu: '칼슘찹쌀밥<br/>시금치된장국<br/>오리쌈<br/>마파두부<br/>배추김치',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '매콤하고 든든한 편',
+    },
   ];
 
   for (const scenario of cases) {
