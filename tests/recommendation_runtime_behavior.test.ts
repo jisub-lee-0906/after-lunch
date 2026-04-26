@@ -197,6 +197,39 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
       expectedDensityLabel: '든든한 구성',
       expectedSummaryLabel: '매콤하고 든든한 편',
     },
+    {
+      name: 'sundae gopchang lunch should not read as bland',
+      lunch: {
+        date: '20260423',
+        calories: 873,
+        menuItems: ['차수수밥', '열무된장국', '날치알계란찜', '순대곱창볶음', '배추김치', '휘낭시에'],
+        rawMenu: '차수수밥<br/>열무된장국<br/>날치알계란찜<br/>순대곱창볶음<br/>배추김치<br/>휘낭시에',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
+    {
+      name: 'five-spice pork lunch should not read as bland',
+      lunch: {
+        date: '20260416',
+        calories: 855,
+        menuItems: ['보리밥', '들깨수제비국', '오향장육', '새송이마늘쫑무침', '열무김치', '사과'],
+        rawMenu: '보리밥<br/>들깨수제비국<br/>오향장육<br/>새송이마늘쫑무침<br/>열무김치<br/>사과',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '든든한 한 끼',
+    },
+    {
+      name: 'yuringi lunch should feel oilier than bland',
+      lunch: {
+        date: '20260414',
+        calories: 994,
+        menuItems: ['칼슘찹쌀밥', '찰감자꽃만두', '사과치커리무침', '통닭가슴살유린기', '배추김치', '자장소스', '미니바나나우유'],
+        rawMenu: '칼슘찹쌀밥<br/>찰감자꽃만두<br/>사과치커리무침<br/>통닭가슴살유린기<br/>배추김치<br/>자장소스<br/>미니바나나우유',
+      },
+      expectedDensityLabel: '든든한 구성',
+      expectedSummaryLabel: '기름기 있는 편',
+    },
   ];
 
   for (const scenario of cases) {
