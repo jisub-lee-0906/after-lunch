@@ -177,10 +177,10 @@ function getLunchProfile(lunch: NeisLunch, summary: LunchSignals) {
     densityScore >= 6 ||
     (starchCount >= 1 && calories >= 620) ||
     (calories >= 760 && (proteinMainCount >= 1 || processedCount >= 1 || friedCount >= 1 || starchCount >= 1))
-      ? '든든하게 먹은 편'
+      ? '든든한 구성'
       : densityScore >= 2 || calories >= 560
-        ? '적당히 먹은 편'
-        : '가볍게 먹은 편';
+        ? '적당한 구성'
+        : '가벼운 구성';
 
   const oneBowlStyleSignal = starchCount >= 1 && heavyScore >= 4 && friedCount === 0 && greasyMainCount === 0;
 
