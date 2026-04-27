@@ -21,7 +21,12 @@ __pycache__/
 *:*Zone.Identifier
 
 # Generated datasets and pipeline outputs
-datasets/
+# Keep large/generated dataset outputs ignored by default, but commit the small runtime dataset
+# imported by lib/dinner-engine.ts so Vercel can build from a clean git checkout.
+datasets/*
+!datasets/2025/
+datasets/2025/*
+!datasets/2025/production_final_dataset_2025.json
 *.jsonl
 refined_lunch_data*.json
 high_confidence_seed*.json

@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import unittest
 
 
@@ -22,6 +23,21 @@ class PredeployContractTests(unittest.TestCase):
         for path in tests_dir.glob('test_*.py'):
             content = path.read_text(encoding='utf-8')
             self.assertNotIn(machine_specific_root_marker, content, f'{path.name} should derive PROJECT_ROOT dynamically')
+    def test_runtime_imported_production_dataset_is_committed_for_vercel(self):
+        dataset_path = PROJECT_ROOT / 'datasets' / '2025' / 'production_final_dataset_2025.json'
+        self.assertTrue(dataset_path.exists(), 'runtime production dataset must exist locally')
+
+        relative_path = dataset_path.relative_to(PROJECT_ROOT).as_posix()
+        tracked_files = subprocess.check_output(
+            ['git', 'ls-files', '--', relative_path],
+            cwd=PROJECT_ROOT,
+            text=True,
+        ).splitlines()
+        self.assertIn(
+            relative_path,
+            tracked_files,
+            'Vercel builds from git only; runtime-imported production dataset must be committed',
+        )
 
 
 if __name__ == '__main__':
