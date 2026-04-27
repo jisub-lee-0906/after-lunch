@@ -17,10 +17,20 @@ export type LunchSignals = {
   lunchAftertaste: LunchAftertaste[];
 };
 
+export type RecipeAction = {
+  role: 'primary' | 'secondary';
+  label: string;
+  dishName: string;
+  url: string;
+};
+
 export type DinnerRecommendation = {
   menuId: string;
   displayName: string;
   canonicalName: string;
+  primaryDish: string;
+  secondaryDish?: string;
+  recipeActions: RecipeAction[];
   prepDifficulty: string;
   sideDishes: string[];
   recipeUrl: string;
@@ -111,12 +121,45 @@ function normalizeText(value: string) {
   return value.replace(/\s+/g, '').trim();
 }
 
-function buildRecipeSearchUrl(dinner: ProductionDinner) {
-  const comboDisplayName = dinner.display_name.replace(/\s*정식$/, '').trim();
-  const query = /[와과]/.test(comboDisplayName)
-    ? comboDisplayName
-    : dinner.main_dishes[0] ?? dinner.canonical_name ?? comboDisplayName;
-  return `https://www.10000recipe.com/recipe/list.html?q=${encodeURIComponent(query)}`;
+function buildRecipeSearchUrlForDish(dishName: string) {
+  return `https://www.10000recipe.com/recipe/list.html?q=${encodeURIComponent(dishName)}`;
+}
+
+function getDinnerComponents(dinner: ProductionDinner) {
+  const displayNameWithoutSet = dinner.display_name.replace(/\s*정식$/, '').trim();
+  const comboMatch = displayNameWithoutSet.match(/^(.+?)(?:와|과)\s*(.+)$/);
+  const parsedPrimaryDish = comboMatch?.[1]?.trim();
+  const parsedSecondaryDish = comboMatch?.[2]?.trim();
+  const primaryDish = parsedPrimaryDish || dinner.main_dishes[0] || dinner.canonical_name || displayNameWithoutSet;
+  const secondaryDish = parsedSecondaryDish && normalizeText(parsedSecondaryDish) !== normalizeText(primaryDish) ? parsedSecondaryDish : undefined;
+
+  return {
+    primaryDish,
+    secondaryDish,
+  };
+}
+
+function buildRecipeActions(dinner: ProductionDinner): RecipeAction[] {
+  const { primaryDish, secondaryDish } = getDinnerComponents(dinner);
+  const actions: RecipeAction[] = [
+    {
+      role: 'primary',
+      label: '대표 레시피',
+      dishName: primaryDish,
+      url: buildRecipeSearchUrlForDish(primaryDish),
+    },
+  ];
+
+  if (secondaryDish) {
+    actions.push({
+      role: 'secondary',
+      label: '국/찌개도 보기',
+      dishName: secondaryDish,
+      url: buildRecipeSearchUrlForDish(secondaryDish),
+    });
+  }
+
+  return actions;
 }
 
 function getRecommendedSideDishes(dinner: ProductionDinner) {
@@ -839,6 +882,25 @@ export function scoreDinnerCandidate(dinner: ProductionDinner, summary: LunchSig
   return score;
 }
 
+function toDinnerRecommendation(dinner: ProductionDinner, score: number, reason: string): DinnerRecommendation {
+  const { primaryDish, secondaryDish } = getDinnerComponents(dinner);
+  const recipeActions = buildRecipeActions(dinner);
+
+  return {
+    menuId: dinner.menu_id,
+    displayName: dinner.display_name,
+    canonicalName: dinner.canonical_name,
+    primaryDish,
+    secondaryDish,
+    recipeActions,
+    prepDifficulty: dinner.attributes.prep_difficulty,
+    sideDishes: getRecommendedSideDishes(dinner),
+    recipeUrl: recipeActions[0].url,
+    reason,
+    score,
+  };
+}
+
 export function buildFallbackDinnerRecommendations(limit = 3, context?: RecommendationHistoryContext): FallbackDinnerRecommendationPayload {
   const recentExposureSignals = buildRecentExposureSignals(context?.currentDate ?? '99991231', context);
   const recommendations = selectDiverseRecommendations(
@@ -854,16 +916,13 @@ export function buildFallbackDinnerRecommendations(limit = 3, context?: Recommen
     undefined,
     'fallback:v2',
     recentExposureSignals,
-  ).map(({ dinner, score }, index) => ({
-      menuId: dinner.menu_id,
-      displayName: dinner.display_name,
-      canonicalName: dinner.canonical_name,
-      prepDifficulty: dinner.attributes.prep_difficulty,
-      sideDishes: getRecommendedSideDishes(dinner),
-      recipeUrl: buildRecipeSearchUrl(dinner),
-      reason: index === 0 ? '점심 없이도 바로 보기 좋은 대표 메뉴예요.' : '급식 정보가 없는 날에도 무난하게 고르기 좋은 메뉴예요.',
+  ).map(({ dinner, score }, index) =>
+    toDinnerRecommendation(
+      dinner,
       score,
-    } satisfies DinnerRecommendation));
+      index === 0 ? '점심 없이도 바로 보기 좋은 대표 메뉴예요.' : '급식 정보가 없는 날에도 무난하게 고르기 좋은 메뉴예요.',
+    ),
+  );
 
   return {
     recommendations,
@@ -890,16 +949,7 @@ export function buildDinnerRecommendationPayload(lunch: NeisLunch, context?: Rec
     lunchSummary,
     `${lunch.date}:${lunch.menuItems.join('|')}`,
     recentExposureSignals,
-  ).map(({ dinner, score }) => ({
-      menuId: dinner.menu_id,
-      displayName: dinner.display_name,
-      canonicalName: dinner.canonical_name,
-      prepDifficulty: dinner.attributes.prep_difficulty,
-      sideDishes: getRecommendedSideDishes(dinner),
-      recipeUrl: buildRecipeSearchUrl(dinner),
-      reason: getRecommendationReason(dinner, lunchSummary),
-      score,
-    } satisfies DinnerRecommendation));
+  ).map(({ dinner, score }) => toDinnerRecommendation(dinner, score, getRecommendationReason(dinner, lunchSummary)));
 
   return {
     lunch,

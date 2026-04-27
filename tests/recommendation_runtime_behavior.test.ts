@@ -102,7 +102,7 @@ test('buildDinnerRecommendationPayload returns three deduped recommendations wit
   }
 });
 
-test('buildDinnerRecommendationPayload uses the full combined recommendation name for recipe search when the menu is a combo set', () => {
+test('buildDinnerRecommendationPayload exposes primary and secondary recipe actions for combo sets', () => {
   const payload = buildDinnerRecommendationPayload({
     date: '20250424',
     calories: 680,
@@ -112,10 +112,20 @@ test('buildDinnerRecommendationPayload uses the full combined recommendation nam
 
   const comboRecommendation = payload.recommendations.find((item) => /[와과].+정식/.test(item.displayName));
   assert.ok(comboRecommendation, 'expected at least one combo recommendation');
-  const expectedQuery = encodeURIComponent(comboRecommendation.displayName.replace(/\s*정식$/, ''));
+  assert.ok(comboRecommendation.primaryDish.length > 0);
+  assert.ok(comboRecommendation.secondaryDish, 'expected combo recommendation to expose a secondary dish');
+  assert.equal(comboRecommendation.recipeActions.length, 2);
+  assert.deepEqual(
+    comboRecommendation.recipeActions.map((action) => action.role),
+    ['primary', 'secondary'],
+  );
   assert.ok(
-    comboRecommendation.recipeUrl.includes(`q=${expectedQuery}`),
-    `expected combo recipe query to use full display name, got ${comboRecommendation.recipeUrl}`,
+    comboRecommendation.recipeUrl.includes(`q=${encodeURIComponent(comboRecommendation.primaryDish)}`),
+    `expected main recipe query to use only primary dish, got ${comboRecommendation.recipeUrl}`,
+  );
+  assert.ok(
+    comboRecommendation.recipeActions[1].url.includes(`q=${encodeURIComponent(comboRecommendation.secondaryDish)}`),
+    `expected secondary recipe query to use only secondary dish, got ${comboRecommendation.recipeActions[1].url}`,
   );
 });
 

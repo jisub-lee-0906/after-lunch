@@ -32,10 +32,20 @@ type LunchSummary = {
   summaryLabel: string;
 };
 
+type RecipeAction = {
+  role: 'primary' | 'secondary';
+  label: string;
+  dishName: string;
+  url: string;
+};
+
 type Recommendation = {
   menuId: string;
   displayName: string;
   canonicalName: string;
+  primaryDish: string;
+  secondaryDish?: string;
+  recipeActions: RecipeAction[];
   prepDifficulty: string;
   sideDishes: string[];
   recipeUrl: string;
@@ -410,23 +420,48 @@ export default function Page() {
                   </Card>
                   <div className="recommendation-scroller overflow-x-auto">
                     <div className="recommendation-track flex snap-x snap-mandatory gap-4 pr-6">
-                      {recommendations.map((recommendation) => (
-                        <Card key={recommendation.menuId} className="recommendation-card min-w-[320px] max-w-[360px]">
-                          <CardContent className="flex h-full flex-col gap-6 p-7 pt-8">
-                            <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
+                      {recommendations.map((recommendation) => {
+                        const primaryRecipeAction = recommendation.recipeActions.find((action) => action.role === 'primary') ?? recommendation.recipeActions[0];
+                        const secondaryRecipeAction = recommendation.recipeActions.find((action) => action.role === 'secondary');
 
-                            <a
-                              href={recommendation.recipeUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="button-primary mt-auto inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-medium"
-                            >
-                              이 메뉴 레시피
-                              <ChevronRight className="ml-2 h-4 w-4" />
-                            </a>
-                          </CardContent>
-                        </Card>
-                      ))}
+                        return (
+                          <Card key={recommendation.menuId} className="recommendation-card min-w-[320px] max-w-[360px]">
+                            <CardContent className="flex h-full flex-col gap-6 p-7 pt-8">
+                              <div className="space-y-2">
+                                <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
+                                {recommendation.secondaryDish ? (
+                                  <p className="text-sm leading-6 text-slate-500">
+                                    {recommendation.primaryDish}에 {recommendation.secondaryDish}를 곁들인 구성
+                                  </p>
+                                ) : null}
+                              </div>
+
+                              <div className="mt-auto space-y-2">
+                                <a
+                                  href={primaryRecipeAction?.url ?? recommendation.recipeUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="button-primary inline-flex h-11 w-full items-center justify-center rounded-2xl px-4 text-sm font-medium"
+                                >
+                                  대표 레시피
+                                  <ChevronRight className="ml-2 h-4 w-4" />
+                                </a>
+                                {secondaryRecipeAction ? (
+                                  <a
+                                    href={secondaryRecipeAction.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex w-full items-center justify-center text-sm font-medium text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline"
+                                  >
+                                    국/찌개도 보기
+                                    <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                                  </a>
+                                ) : null}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
