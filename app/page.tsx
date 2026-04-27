@@ -400,7 +400,19 @@ export default function Page() {
               ) : (
                 <div className="space-y-3">
                   <Card className="bridge-card">
-                    <p className="bridge-card__message">{bridgeComment}</p>
+                    <div className="bridge-card__content">
+                      <div className="bridge-card__quote-wrap">
+                        <span aria-hidden="true" className="bridge-card__mark">
+                          “
+                        </span>
+                        <p className="bridge-card__message">
+                          {bridgeComment}{' '}
+                          <span aria-hidden="true" className="bridge-card__mark bridge-card__mark--inline">
+                            ”
+                          </span>
+                        </p>
+                      </div>
+                    </div>
                   </Card>
                   <div className="recommendation-scroller overflow-x-auto">
                     <div className="recommendation-track flex snap-x snap-mandatory gap-4 pr-6">
