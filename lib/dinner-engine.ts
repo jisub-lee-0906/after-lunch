@@ -415,42 +415,8 @@ export function summarizeLunchSignals(menuItems: string[]): LunchSignals {
   };
 }
 
-function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
-  const profile = getLunchProfile(lunch, summary);
-
-  if (profile.summaryLabel === '기름지고 매콤한 편') {
-    return '점심이 기름지고 자극적이었어서, 저녁은 더 편안한 메뉴들로 골랐어요.';
-  }
-
-  if (profile.summaryLabel === '기름기 있는 편') {
-    return '점심이 조금 진한 편이어서, 저녁은 더 담백한 메뉴들로 골랐어요.';
-  }
-
-  if (profile.summaryLabel === '매콤하고 든든한 편' || profile.summaryLabel === '매콤한 편') {
-    return '점심이 매콤했어서, 저녁은 자극을 낮춘 메뉴들로 골랐어요.';
-  }
-
-  if (profile.summaryLabel === '한 그릇 메뉴가 있었던 편') {
-    return '점심이 한 그릇 메뉴 위주였어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.';
-  }
-
-  if (profile.summaryLabel === '메인 반찬이 든든한 편') {
-    return '점심에 메인 반찬이 든든했어서, 저녁은 조금 더 편안하게 먹기 좋은 메뉴로 골랐어요.';
-  }
-
-  if (profile.summaryLabel === '국물 메뉴가 있는 편') {
-    return '점심에 국물 메뉴가 있었어서, 저녁은 너무 무겁지 않은 메뉴로 골랐어요.';
-  }
-
-  if (summary.proteinPreference === 'diverse-protein') {
-    return '점심 구성을 보고, 저녁은 부담 없이 먹기 좋은 메뉴로 골랐어요.';
-  }
-
-  if (summary.isHeavy) {
-    return '점심이 든든했어서, 저녁은 조금 더 가볍게 먹기 좋은 메뉴로 골랐어요.';
-  }
-
-  return '오늘 점심이 비교적 가벼워서, 저녁은 편하게 먹기 좋은 메뉴로 골랐어요.';
+function buildBridgeComment() {
+  return '점심 메뉴를 참고해 오늘 저녁으로 고르기 좋은 메뉴를 골랐어요.';
 }
 
 function getLunchTags(summary: LunchSignals) {
@@ -951,7 +917,7 @@ export function buildDinnerRecommendationPayload(lunch: NeisLunch, context?: Rec
       summaryLabel: getLunchSummaryLabel(lunch, lunchSummary),
     },
     lunchTags: getLunchTags(lunchSummary),
-    bridgeComment: buildBridgeComment(lunch, lunchSummary),
+    bridgeComment: buildBridgeComment(),
     recommendations,
   };
 }

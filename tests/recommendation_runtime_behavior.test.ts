@@ -150,7 +150,36 @@ test('buildDinnerRecommendationPayload derives balanced labels for steady lunche
 
   assert.equal(payload.lunchSummary.densityLabel, '적당한 구성');
   assert.equal(payload.lunchSummary.summaryLabel, '국물 메뉴가 있는 편');
-  assert.equal(payload.bridgeComment, '점심에 국물 메뉴가 있었어서, 저녁은 너무 무겁지 않은 메뉴로 골랐어요.');
+  assert.equal(payload.bridgeComment, '점심 메뉴를 참고해 오늘 저녁으로 고르기 좋은 메뉴를 골랐어요.');
+});
+
+test('buildDinnerRecommendationPayload uses a neutral bridge comment so it does not over-claim menu fit', () => {
+  const lunches = [
+    {
+      date: '20250424',
+      calories: 680,
+      menuItems: ['참치마요덮밥', '배추김치'],
+      rawMenu: '참치마요덮밥<br/>배추김치',
+    },
+    {
+      date: '20250424',
+      calories: 520,
+      menuItems: ['맑은두부국', '계란찜', '오이무침'],
+      rawMenu: '맑은두부국<br/>계란찜<br/>오이무침',
+    },
+    {
+      date: '20250424',
+      calories: 820,
+      menuItems: ['돈까스', '떡볶이', '배추김치'],
+      rawMenu: '돈까스<br/>떡볶이<br/>배추김치',
+    },
+  ];
+
+  for (const lunch of lunches) {
+    const payload = buildDinnerRecommendationPayload(lunch);
+    assert.equal(payload.bridgeComment, '점심 메뉴를 참고해 오늘 저녁으로 고르기 좋은 메뉴를 골랐어요.');
+    assert.ok(!/가볍|담백|자극을 낮춘|반찬 균형|무겁지/.test(payload.bridgeComment));
+  }
 });
 
 test('buildDinnerRecommendationPayload derives one-plate summary labels for starch-heavy lunches', () => {
@@ -163,7 +192,6 @@ test('buildDinnerRecommendationPayload derives one-plate summary labels for star
 
   assert.equal(payload.lunchSummary.densityLabel, '든든한 구성');
   assert.equal(payload.lunchSummary.summaryLabel, '한 그릇 메뉴가 있었던 편');
-  assert.equal(payload.bridgeComment, '점심이 한 그릇 메뉴 위주였어서, 저녁은 단백질과 반찬 균형을 더한 메뉴들로 골랐어요.');
 });
 
 test('buildDinnerRecommendationPayload derives lighter labels for very simple lunches', () => {
@@ -176,7 +204,6 @@ test('buildDinnerRecommendationPayload derives lighter labels for very simple lu
 
   assert.equal(payload.lunchSummary.densityLabel, '가벼운 구성');
   assert.equal(payload.lunchSummary.summaryLabel, '자극이 적은 편');
-  assert.equal(payload.bridgeComment, '오늘 점심이 비교적 가벼워서, 저녁은 편하게 먹기 좋은 메뉴로 골랐어요.');
 });
 
 test('buildDinnerRecommendationPayload uses meal-style-based fallback reasons for lighter lunches', () => {
@@ -340,7 +367,7 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
       },
       expectedDensityLabel: '든든한 구성',
       expectedSummaryLabel: '기름기 있는 편',
-      expectedBridgeComment: '점심이 조금 진한 편이어서, 저녁은 더 담백한 메뉴들로 골랐어요.',
+      expectedBridgeComment: '점심 메뉴를 참고해 오늘 저녁으로 고르기 좋은 메뉴를 골랐어요.',
     },
     {
       name: 'rice plus jjolmyeon plus cutlet lunch should not read as one-bowl style',
@@ -352,7 +379,7 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
       },
       expectedDensityLabel: '든든한 구성',
       expectedSummaryLabel: '기름기 있는 편',
-      expectedBridgeComment: '점심이 조금 진한 편이어서, 저녁은 더 담백한 메뉴들로 골랐어요.',
+      expectedBridgeComment: '점심 메뉴를 참고해 오늘 저녁으로 고르기 좋은 메뉴를 골랐어요.',
     },
 
   ];

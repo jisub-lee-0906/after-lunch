@@ -400,23 +400,7 @@ export default function Page() {
               ) : (
                 <div className="space-y-3">
                   <Card className="bridge-card">
-                    <div className="bridge-card__content flex flex-col items-center justify-center text-center">
-                      <div className="bridge-card__quote-wrap flex items-start justify-center" style={{ gap: '0.18rem' }}>
-                        <span aria-hidden="true" className="bridge-card__mark" style={{ transform: 'translateY(1px)' }}>
-                          “
-                        </span>
-                        <p className="bridge-card__quote bridge-card__quote--editorial text-center">
-                          {bridgeComment}{' '}
-                          <span
-                            aria-hidden="true"
-                            className="bridge-card__mark bridge-card__mark--inline"
-                            style={{ fontSize: '1.9rem', lineHeight: 1, fontWeight: 400, color: 'rgb(100 116 139 / 0.42)', display: 'inline-block', verticalAlign: '-0.18rem' }}
-                          >
-                            ”
-                          </span>
-                        </p>
-                      </div>
-                    </div>
+                    <p className="bridge-card__message">{bridgeComment}</p>
                   </Card>
                   <div className="recommendation-scroller overflow-x-auto">
                     <div className="recommendation-track flex snap-x snap-mandatory gap-4 pr-6">

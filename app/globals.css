@@ -151,60 +151,17 @@
   }
 
   .bridge-card {
-    padding: 1.5rem;
+    padding: 1rem 1.125rem;
   }
 
-  .bridge-card__content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    padding: 0.25rem 0 0;
-    text-align: center;
-  }
-
-  .bridge-card__quote-wrap {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 0.375rem;
-  }
-
-  .bridge-card__mark {
-    color: rgb(100 116 139 / 0.42);
-    font-size: 1.9rem;
-    line-height: 1;
-    transform: translateY(0.16rem);
-    flex-shrink: 0;
-  }
-
-  .bridge-card__quote {
+  .bridge-card__message {
     color: var(--text-body);
-    font-size: 1rem;
-    line-height: 1.8rem;
-    letter-spacing: -0.01em;
-    margin: 0;
-  }
-
-  .bridge-card__mark--inline {
-    display: inline-block;
-    margin-left: 0;
-    vertical-align: -0.18rem;
-    font-size: 1.9rem;
-    font-weight: 400;
-    line-height: 1;
-    color: rgb(100 116 139 / 0.42);
-    transform: none;
-  }
-
-  .bridge-card__quote--editorial {
-    max-width: 30ch;
-    color: rgb(30 41 59 / 0.9);
-    font-size: 1.125rem;
+    font-size: 0.98rem;
     font-weight: 500;
-    line-height: 1.95rem;
-    letter-spacing: -0.018em;
+    line-height: 1.65rem;
+    letter-spacing: -0.012em;
+    margin: 0;
+    text-align: left;
   }
 
   .list-row {
