@@ -140,26 +140,16 @@ function getDinnerComponents(dinner: ProductionDinner) {
 }
 
 function buildRecipeActions(dinner: ProductionDinner): RecipeAction[] {
-  const { primaryDish, secondaryDish } = getDinnerComponents(dinner);
-  const actions: RecipeAction[] = [
+  const { primaryDish } = getDinnerComponents(dinner);
+
+  return [
     {
       role: 'primary',
-      label: '대표 레시피',
+      label: '레시피 보기',
       dishName: primaryDish,
       url: buildRecipeSearchUrlForDish(primaryDish),
     },
   ];
-
-  if (secondaryDish) {
-    actions.push({
-      role: 'secondary',
-      label: '국/찌개도 보기',
-      dishName: secondaryDish,
-      url: buildRecipeSearchUrlForDish(secondaryDish),
-    });
-  }
-
-  return actions;
 }
 
 function getRecommendedSideDishes(dinner: ProductionDinner) {
@@ -888,7 +878,7 @@ function toDinnerRecommendation(dinner: ProductionDinner, score: number, reason:
 
   return {
     menuId: dinner.menu_id,
-    displayName: dinner.display_name,
+    displayName: primaryDish,
     canonicalName: dinner.canonical_name,
     primaryDish,
     secondaryDish,

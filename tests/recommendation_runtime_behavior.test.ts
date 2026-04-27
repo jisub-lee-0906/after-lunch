@@ -102,7 +102,7 @@ test('buildDinnerRecommendationPayload returns three deduped recommendations wit
   }
 });
 
-test('buildDinnerRecommendationPayload exposes primary and secondary recipe actions for combo sets', () => {
+test('buildDinnerRecommendationPayload presents combo candidates as single primary-dish recommendations', () => {
   const payload = buildDinnerRecommendationPayload({
     date: '20250424',
     calories: 680,
@@ -110,23 +110,22 @@ test('buildDinnerRecommendationPayload exposes primary and secondary recipe acti
     rawMenu: '참치마요덮밥<br/>배추김치',
   });
 
-  const comboRecommendation = payload.recommendations.find((item) => /[와과].+정식/.test(item.displayName));
-  assert.ok(comboRecommendation, 'expected at least one combo recommendation');
-  assert.ok(comboRecommendation.primaryDish.length > 0);
-  assert.ok(comboRecommendation.secondaryDish, 'expected combo recommendation to expose a secondary dish');
-  assert.equal(comboRecommendation.recipeActions.length, 2);
-  assert.deepEqual(
-    comboRecommendation.recipeActions.map((action) => action.role),
-    ['primary', 'secondary'],
-  );
-  assert.ok(
-    comboRecommendation.recipeUrl.includes(`q=${encodeURIComponent(comboRecommendation.primaryDish)}`),
-    `expected main recipe query to use only primary dish, got ${comboRecommendation.recipeUrl}`,
-  );
-  assert.ok(
-    comboRecommendation.recipeActions[1].url.includes(`q=${encodeURIComponent(comboRecommendation.secondaryDish)}`),
-    `expected secondary recipe query to use only secondary dish, got ${comboRecommendation.recipeActions[1].url}`,
-  );
+  const primaryDishRecommendation = payload.recommendations.find((item) => item.primaryDish === item.displayName);
+  assert.ok(primaryDishRecommendation, 'expected at least one primary-dish recommendation');
+
+  for (const recommendation of payload.recommendations) {
+    assert.equal(recommendation.displayName, recommendation.primaryDish);
+    assert.ok(!/[와과].+정식/.test(recommendation.displayName), `display name should be single-dish, got ${recommendation.displayName}`);
+    assert.equal(recommendation.recipeActions.length, 1);
+    assert.deepEqual(
+      recommendation.recipeActions.map((action) => action.role),
+      ['primary'],
+    );
+    assert.ok(
+      recommendation.recipeUrl.includes(`q=${encodeURIComponent(recommendation.primaryDish)}`),
+      `expected recipe query to use only primary dish, got ${recommendation.recipeUrl}`,
+    );
+  }
 });
 
 test('buildDinnerRecommendationPayload derives persuasive density and summary labels for fried spicy lunches', () => {

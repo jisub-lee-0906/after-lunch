@@ -24,11 +24,9 @@ class MobileMainPageContractTests(unittest.TestCase):
             '점심 구성',
             '저녁 추천',
             '오늘 급식을 참고한 저녁 메뉴 추천',
-            '대표 레시피',
-            '국/찌개도 보기',
+            '레시피 보기',
             'recipeActions',
             'primaryDish',
-            'secondaryDish',
             '10000recipe.com',
             '학교 설정',
             '학교 검색',
@@ -122,6 +120,9 @@ class MobileMainPageContractTests(unittest.TestCase):
             'bg-[var(--surface-card)]',
             'bg-[var(--surface-subtle)]',
             'primary-action',
+            '대표 레시피',
+            '국/찌개도 보기',
+            '곁들인 구성',
         ]
         for item in forbidden_strings:
             self.assertNotIn(item, content)
