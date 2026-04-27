@@ -20,8 +20,8 @@ class MobileMainPageContractTests(unittest.TestCase):
             'selectedDayLabel',
             '점심 메뉴',
             '급식 메뉴',
-            '점심 자극도',
-            '점심 식사량',
+            '점심 특징',
+            '점심 구성',
             '오늘 저녁 추천',
             '점심 메뉴를 참고해 집에서 부담 없이 준비할 수 있는 저녁 메뉴를 추천해드려요.',
             '이 메뉴 레시피',
@@ -86,6 +86,8 @@ class MobileMainPageContractTests(unittest.TestCase):
         ]
         for item in required_strings:
             self.assertIn(item, combined_content)
+
+        self.assertIn('점심 구성', content)
 
         forbidden_strings = [
             '🍱',

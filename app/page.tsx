@@ -290,13 +290,13 @@ export default function Page() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="metric-card">
-                  <p className="text-caption">점심 식사량</p>
+                  <p className="text-caption">점심 구성</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">
                     {lunchSummary.densityLabel}
                   </p>
                 </div>
                 <div className="metric-card">
-                  <p className="text-caption">점심 자극도</p>
+                  <p className="text-caption">점심 특징</p>
                   <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-slate-950">
                     {lunchSummary.summaryLabel}
                   </p>
