@@ -47,6 +47,20 @@ export type FallbackDinnerRecommendationPayload = {
   bridgeComment: string;
 };
 
+export type RecommendationExposureHistoryEntry = {
+  schoolKey: string;
+  userKey: string;
+  recommendedAt: string;
+  menuId: string;
+};
+
+export type RecommendationHistoryContext = {
+  schoolKey?: string;
+  userKey?: string;
+  currentDate?: string;
+  recentExposureHistory?: RecommendationExposureHistoryEntry[];
+};
+
 const SOUP_KEYWORDS = ['국', '탕', '찌개', '수제비', '쌀국수', '순두부', '미역국', '된장국'];
 const LIGHT_KEYWORDS = ['두부', '야채', '버섯', '아욱', '순두부', '수제비', '쌀국수'];
 const primaryProteinKeywords: Record<string, string[]> = {
@@ -82,13 +96,26 @@ const NOISE_KEYWORDS = [
   '소스',
 ];
 const SIDE_DISH_EXCLUSION_KEYWORDS = ['밥', '우유', '요구르트', '요거트', '수박', '바나나', '토마토', '푸딩', '과일', '주스', '사과'];
+const RECENT_EXPOSURE_WINDOW_DAYS = 4;
+const MAX_RECENT_EXPOSURE_ENTRIES = 18;
+const dinnerByMenuId = new Map(productionDataset.map((dinner) => [dinner.menu_id, dinner]));
+
+type RecentExposureSignals = {
+  recentMenuCounts: Map<string, number>;
+  recentCategoryCounts: Map<string, number>;
+  recentProteinCounts: Map<string, number>;
+  recentPerceivedClusterCounts: Map<string, number>;
+};
 
 function normalizeText(value: string) {
   return value.replace(/\s+/g, '').trim();
 }
 
 function buildRecipeSearchUrl(dinner: ProductionDinner) {
-  const query = dinner.main_dishes[0] ?? dinner.canonical_name ?? dinner.display_name;
+  const comboDisplayName = dinner.display_name.replace(/\s*정식$/, '').trim();
+  const query = /[와과]/.test(comboDisplayName)
+    ? comboDisplayName
+    : dinner.main_dishes[0] ?? dinner.canonical_name ?? comboDisplayName;
   return `https://www.10000recipe.com/recipe/list.html?q=${encodeURIComponent(query)}`;
 }
 
@@ -390,7 +417,7 @@ function buildBridgeComment(lunch: NeisLunch, summary: LunchSignals) {
     return '점심이 든든했어서, 저녁은 조금 더 가볍게 먹기 좋은 메뉴로 골랐어요.';
   }
 
-  return '오늘 점심이 비교적 가벼운 편이라, 저녁은 부담 없이 준비해 먹을 수 있는 메뉴로 골랐어요.';
+  return '오늘 점심이 비교적 가벼워서, 저녁은 편하게 먹기 좋은 메뉴로 골랐어요.';
 }
 
 function getLunchTags(summary: LunchSignals) {
@@ -439,60 +466,165 @@ function classifyDinnerCategory(dinner: ProductionDinner) {
   return 'balanced';
 }
 
+function classifyPerceivedRepeatCluster(dinner: ProductionDinner) {
+  const dinnerText = `${dinner.display_name} ${dinner.canonical_name} ${dinner.main_dishes.join(' ')}`;
+  if (/순두부|두부조림|연두부|두부양념조림/.test(dinnerText)) return 'tofu';
+  if (/된장국|된장찌개/.test(dinnerText)) return 'doenjang';
+  if (/미역국/.test(dinnerText)) return 'miyeok';
+  if (/장조림/.test(dinnerText)) return 'jangjorim';
+  if (/불고기/.test(dinnerText)) return 'bulgogi';
+  if (/볶음밥|덮밥|비빔밥|카레|짜장/.test(dinnerText)) return 'oneplate';
+  if (/국|탕|찌개|수제비/.test(dinnerText)) return 'broth';
+  return 'other';
+}
+
+function stableHash(value: string) {
+  let hash = 0;
+  for (const char of value) {
+    hash = (hash * 31 + char.charCodeAt(0)) % 2147483647;
+  }
+  return hash;
+}
+
+function parseYmdToUtcDayIndex(value: string) {
+  if (!/^\d{8}$/.test(value)) return null;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(4, 6));
+  const day = Number(value.slice(6, 8));
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const utcTime = Date.UTC(year, month - 1, day);
+  if (Number.isNaN(utcTime)) return null;
+  return Math.floor(utcTime / 86400000);
+}
+
+function buildRecentExposureSignals(currentDate: string, context?: RecommendationHistoryContext): RecentExposureSignals {
+  const recentMenuCounts = new Map<string, number>();
+  const recentCategoryCounts = new Map<string, number>();
+  const recentProteinCounts = new Map<string, number>();
+  const recentPerceivedClusterCounts = new Map<string, number>();
+  const history = context?.recentExposureHistory ?? [];
+
+  if (!context?.schoolKey || !context?.userKey || history.length === 0) {
+    return { recentMenuCounts, recentCategoryCounts, recentProteinCounts, recentPerceivedClusterCounts };
+  }
+
+  const currentDayIndex = parseYmdToUtcDayIndex(currentDate);
+  if (currentDayIndex === null) {
+    return { recentMenuCounts, recentCategoryCounts, recentProteinCounts, recentPerceivedClusterCounts };
+  }
+
+  for (const exposure of history.slice(-MAX_RECENT_EXPOSURE_ENTRIES)) {
+    if (exposure.schoolKey !== context.schoolKey || exposure.userKey !== context.userKey) continue;
+
+    const exposureDayIndex = parseYmdToUtcDayIndex(exposure.recommendedAt);
+    if (exposureDayIndex === null) continue;
+
+    const dayDiff = currentDayIndex - exposureDayIndex;
+    if (dayDiff < 0 || dayDiff > RECENT_EXPOSURE_WINDOW_DAYS) continue;
+
+    const dinner = dinnerByMenuId.get(exposure.menuId);
+    if (!dinner) continue;
+
+    recentMenuCounts.set(exposure.menuId, (recentMenuCounts.get(exposure.menuId) ?? 0) + 1);
+
+    const category = classifyDinnerCategory(dinner);
+    recentCategoryCounts.set(category, (recentCategoryCounts.get(category) ?? 0) + 1);
+
+    const perceivedCluster = classifyPerceivedRepeatCluster(dinner);
+    recentPerceivedClusterCounts.set(perceivedCluster, (recentPerceivedClusterCounts.get(perceivedCluster) ?? 0) + 1);
+
+    for (const proteinTag of dinner.protein_tags) {
+      recentProteinCounts.set(proteinTag, (recentProteinCounts.get(proteinTag) ?? 0) + 1);
+    }
+  }
+
+  return { recentMenuCounts, recentCategoryCounts, recentProteinCounts, recentPerceivedClusterCounts };
+}
+
+function getPreferredFirstPickCategories(summary: LunchSignals | undefined, seedBase: string) {
+  if (!summary) return ['balanced', 'soup', 'starch', 'spicy', 'fried'];
+  if (summary.mealType === 'hearty-soup') return ['balanced', 'starch', 'soup', 'spicy', 'fried'];
+  if (summary.mealType === 'starch-heavy') return ['balanced', 'soup', 'starch', 'spicy', 'fried'];
+  if (summary.hasFried || summary.hasSpicy) return ['soup', 'balanced', 'starch', 'spicy', 'fried'];
+  if (summary.mealType === 'balanced') return ['soup', 'balanced', 'starch', 'spicy', 'fried'];
+
+  const neutralCategories = ['balanced', 'soup', 'starch'];
+  const offset = stableHash(`${seedBase}:neutral-category`) % neutralCategories.length;
+  return [...neutralCategories.slice(offset), ...neutralCategories.slice(0, offset), 'spicy', 'fried'];
+}
+
 function selectDiverseRecommendations(
   scoredCandidates: Array<{ dinner: ProductionDinner; score: number }>,
   limit: number,
-  candidatePoolSize = 9,
+  candidatePoolSize = 18,
   summary?: LunchSignals,
   rotationSeed?: string,
+  recentExposureSignals?: RecentExposureSignals,
 ) {
-  // 추천 다양성: 상위권 안정성을 유지하면서 단백질군/메뉴 타입 반복은 완만하게 줄인다.
-  const shortlisted = scoredCandidates.slice(0, candidatePoolSize);
+  // 점수제는 유지하되, 상위 후보 풀 안에서만 다양성을 조금 더 강하게 보장한다.
+  const shortlisted = scoredCandidates.slice(0, candidatePoolSize).map((candidate, shortlistRank) => ({
+    ...candidate,
+    shortlistRank,
+  }));
   const selected: Array<{ dinner: ProductionDinner; score: number }> = [];
   const seenProteinTags = new Set<string>();
   const seenMealCategories = new Set<string>();
-  const neutralShortlisted = [...shortlisted].sort((left, right) => {
-    const leftCategory = classifyDinnerCategory(left.dinner);
-    const rightCategory = classifyDinnerCategory(right.dinner);
-    const neutralVarietyBonus = (candidate: { dinner: ProductionDinner; score: number }, category: string) => {
-      let bonus = 0;
-      if (candidate.dinner.taxonomy.dinner_fit === 'everyday') bonus += 4;
-      else if (candidate.dinner.taxonomy.dinner_fit === 'flexible') bonus += 2;
-      if (category !== 'soup') bonus += 6;
-      if (candidate.dinner.taxonomy.comfort_level !== 'hearty') bonus += 2;
-      return bonus;
-    };
-
-    if (summary?.lunchAftertaste.length === 0) {
-      const leftAdjusted = left.score + neutralVarietyBonus(left, leftCategory);
-      const rightAdjusted = right.score + neutralVarietyBonus(right, rightCategory);
-      if (rightAdjusted !== leftAdjusted) return rightAdjusted - leftAdjusted;
-    }
-
-    if (right.score !== left.score) return right.score - left.score;
-    return right.dinner.popularity.occurrence_count - left.dinner.popularity.occurrence_count;
-  });
-  const rotatedNeutralPool = (() => {
-    if (summary?.lunchAftertaste.length === 0 && rotationSeed && neutralShortlisted.length > 1) {
-      const seedValue = Array.from(rotationSeed).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-      const rotationOffset = seedValue % Math.min(3, neutralShortlisted.length);
-      return [...neutralShortlisted.slice(rotationOffset), ...neutralShortlisted.slice(0, rotationOffset)];
-    }
-    return neutralShortlisted;
-  })();
-  const rankedShortlisted = summary?.lunchAftertaste.length === 0 ? rotatedNeutralPool : shortlisted;
-  const remainingCandidates = [...rankedShortlisted];
+  const seenPerceivedClusters = new Set<string>();
+  const summarySeed = summary ? `${summary.mealType}:${summary.proteinPreference}:${summary.keywords.join('|')}` : 'default';
+  const seedBase = rotationSeed ?? summarySeed;
+  const remainingCandidates = [...shortlisted];
 
   while (remainingCandidates.length > 0 && selected.length < limit) {
     const rankedByVarietyScore = remainingCandidates
       .map((candidate) => {
         const category = classifyDinnerCategory(candidate.dinner);
-        const repeatedCategoryPenalty = seenMealCategories.has(category) ? 6 : 0;
-        const repeatedProteinPenalty = candidate.dinner.protein_tags.filter((tag) => seenProteinTags.has(tag)).length * 3;
+        const perceivedCluster = classifyPerceivedRepeatCluster(candidate.dinner);
+        const hasNewProtein = candidate.dinner.protein_tags.some((tag) => !seenProteinTags.has(tag));
+        const hasNewCategory = !seenMealCategories.has(category);
+        const hasNewPerceivedCluster = !seenPerceivedClusters.has(perceivedCluster);
+        const repeatedCategoryPenalty = seenMealCategories.has(category) ? 8 : 0;
+        const repeatedProteinPenalty = candidate.dinner.protein_tags.filter((tag) => seenProteinTags.has(tag)).length * 4;
+        const repeatedPerceivedClusterPenalty = seenPerceivedClusters.has(perceivedCluster) ? (selected.length === 0 ? 0 : 12) : 0;
+        const recentMenuCount = recentExposureSignals?.recentMenuCounts.get(candidate.dinner.menu_id) ?? 0;
+        const recentCategoryCount = recentExposureSignals?.recentCategoryCounts.get(category) ?? 0;
+        const recentPerceivedClusterCount = recentExposureSignals?.recentPerceivedClusterCounts.get(perceivedCluster) ?? 0;
+        const recentProteinCount = candidate.dinner.protein_tags.reduce((sum, tag) => sum + (recentExposureSignals?.recentProteinCounts.get(tag) ?? 0), 0);
+        const recentExactMenuPenalty = recentMenuCount * (selected.length === 0 ? 32 : 18);
+        const recentCategoryPenalty = recentCategoryCount * (selected.length === 0 ? 14 : 8);
+        const recentPerceivedClusterPenalty = recentPerceivedClusterCount * (selected.length === 0 ? 18 : 10);
+        const recentProteinPenalty = recentProteinCount * (selected.length === 0 ? 9 : 5);
+        const noveltyBonus =
+          selected.length === 0
+            ? hasNewPerceivedCluster ? 2 : 0
+            : (hasNewCategory ? 6 : 0) +
+              (hasNewPerceivedCluster ? 8 : 0) +
+              (hasNewProtein ? 4 : 0) +
+              (category !== 'soup' && seenMealCategories.has('soup') ? 2 : 0);
+        const selectionBaseScore = (candidatePoolSize - candidate.shortlistRank) * 3;
+        const popularitySinkPenalty = selected.length === 0 ? Math.round(candidate.dinner.popularity.occurrence_count / 90) : 0;
+
         return {
           candidate,
           category,
-          adjustedScore: candidate.score - repeatedCategoryPenalty - repeatedProteinPenalty,
+          perceivedCluster,
+          hasNewProtein,
+          hasNewCategory,
+          hasNewPerceivedCluster,
+          recentMenuCount,
+          recentCategoryCount,
+          recentPerceivedClusterCount,
+          recentProteinCount,
+          adjustedScore:
+            selectionBaseScore +
+            noveltyBonus -
+            repeatedCategoryPenalty -
+            repeatedProteinPenalty -
+            repeatedPerceivedClusterPenalty -
+            recentExactMenuPenalty -
+            recentCategoryPenalty -
+            recentPerceivedClusterPenalty -
+            recentProteinPenalty -
+            popularitySinkPenalty,
         };
       })
       .sort((left, right) => {
@@ -500,18 +632,80 @@ function selectDiverseRecommendations(
         return right.candidate.dinner.popularity.occurrence_count - left.candidate.dinner.popularity.occurrence_count;
       });
 
+    const topAdjustedScore = rankedByVarietyScore[0]?.adjustedScore ?? 0;
+    const scoreBand = selected.length === 0 ? 6 : 4;
+    const nearTopCandidates = rankedByVarietyScore.filter(({ adjustedScore }) => adjustedScore >= topAdjustedScore - scoreBand);
+    const diversityEligible = nearTopCandidates.filter(
+      ({ hasNewProtein, hasNewCategory, hasNewPerceivedCluster }) => selected.length === 0 || hasNewProtein || hasNewCategory || hasNewPerceivedCluster,
+    );
+    const candidateBand = diversityEligible.length > 0 ? diversityEligible : nearTopCandidates;
+
+    const rankedCandidateBand = [...candidateBand].sort((left, right) => {
+      if (Number(right.hasNewCategory) !== Number(left.hasNewCategory)) return Number(right.hasNewCategory) - Number(left.hasNewCategory);
+      if (Number(right.hasNewPerceivedCluster) !== Number(left.hasNewPerceivedCluster)) {
+        return Number(right.hasNewPerceivedCluster) - Number(left.hasNewPerceivedCluster);
+      }
+      if (Number(right.hasNewProtein) !== Number(left.hasNewProtein)) return Number(right.hasNewProtein) - Number(left.hasNewProtein);
+      if (right.adjustedScore !== left.adjustedScore) return right.adjustedScore - left.adjustedScore;
+      return right.candidate.dinner.popularity.occurrence_count - left.candidate.dinner.popularity.occurrence_count;
+    });
+
+    const forcedNewCategoryPick =
+      selected.length > 0 && !rankedCandidateBand.some(({ hasNewCategory }) => hasNewCategory)
+        ? rankedByVarietyScore.find(({ hasNewCategory }) => hasNewCategory)
+        : undefined;
+    const forcedNewPerceivedClusterPick =
+      selected.length > 0 && !rankedCandidateBand.some(({ hasNewPerceivedCluster }) => hasNewPerceivedCluster)
+        ? rankedByVarietyScore.find(({ hasNewPerceivedCluster }) => hasNewPerceivedCluster)
+        : undefined;
+    const forcedNewProteinPick =
+      selected.length > 0 && !rankedCandidateBand.some(({ hasNewProtein }) => hasNewProtein)
+        ? rankedByVarietyScore.find(({ hasNewProtein }) => hasNewProtein)
+        : undefined;
+
     const nextPick =
-      rankedByVarietyScore.find(({ candidate, category }) => {
-        const hasNewProtein = candidate.dinner.protein_tags.some((tag) => !seenProteinTags.has(tag));
-        const hasNewCategory = !seenMealCategories.has(category);
-        return selected.length === 0 || hasNewProtein || hasNewCategory;
-      }) ?? rankedByVarietyScore[0];
+      forcedNewCategoryPick ??
+      forcedNewPerceivedClusterPick ??
+      forcedNewProteinPick ??
+      (selected.length === 0
+        ? (() => {
+            const preferredCategories = getPreferredFirstPickCategories(summary, seedBase);
+            const unseenMenuBand = rankedByVarietyScore.filter(({ recentMenuCount }) => recentMenuCount === 0);
+            const unseenCategoryBand = unseenMenuBand.filter(({ recentCategoryCount }) => recentCategoryCount === 0);
+            const unseenClusterBand = unseenCategoryBand.filter(({ recentPerceivedClusterCount }) => recentPerceivedClusterCount === 0);
+            const unseenProteinBand = unseenClusterBand.filter(({ recentProteinCount }) => recentProteinCount === 0);
+            const firstPickBand =
+              unseenProteinBand.length > 0
+                ? unseenProteinBand
+                : unseenClusterBand.length > 0
+                  ? unseenClusterBand
+                  : unseenCategoryBand.length > 0
+                    ? unseenCategoryBand
+                    : unseenMenuBand.length > 0
+                      ? unseenMenuBand
+                      : rankedCandidateBand;
+
+            return [...firstPickBand].sort((left, right) => {
+              if (left.recentCategoryCount !== right.recentCategoryCount) return left.recentCategoryCount - right.recentCategoryCount;
+              if (left.recentPerceivedClusterCount !== right.recentPerceivedClusterCount) {
+                return left.recentPerceivedClusterCount - right.recentPerceivedClusterCount;
+              }
+              if (left.recentProteinCount !== right.recentProteinCount) return left.recentProteinCount - right.recentProteinCount;
+              if (right.adjustedScore !== left.adjustedScore) return right.adjustedScore - left.adjustedScore;
+              const leftCategoryRank = preferredCategories.indexOf(left.category);
+              const rightCategoryRank = preferredCategories.indexOf(right.category);
+              if (leftCategoryRank !== rightCategoryRank) return leftCategoryRank - rightCategoryRank;
+              return left.candidate.dinner.popularity.occurrence_count - right.candidate.dinner.popularity.occurrence_count;
+            })[0];
+          })()
+        : rankedCandidateBand[0]);
 
     if (!nextPick) break;
 
     selected.push(nextPick.candidate);
     nextPick.candidate.dinner.protein_tags.forEach((tag) => seenProteinTags.add(tag));
     seenMealCategories.add(nextPick.category);
+    seenPerceivedClusters.add(nextPick.perceivedCluster);
     const selectedIndex = remainingCandidates.indexOf(nextPick.candidate);
     if (selectedIndex >= 0) remainingCandidates.splice(selectedIndex, 1);
   }
@@ -524,42 +718,54 @@ function getRecommendationReason(dinner: ProductionDinner, summary: LunchSignals
   const { matchedResponses, transitionFitLabel } = transitionMatchBonus(dinner, summary);
 
   if (transitionFitLabel !== 'weak' && matchedResponses.includes('broth_reset')) {
-    return `점심 뒤 기름진 흐름을 정리하기 좋은 ${mainDish} 중심 메뉴예요.`;
+    return `점심이 조금 진한 편이었다면, 저녁은 ${mainDish}처럼 편하게 먹기 좋은 메뉴예요.`;
   }
 
   if (transitionFitLabel !== 'weak' && matchedResponses.includes('bland_reset')) {
-    return `점심보다 자극을 낮춰 저녁을 편안하게 이어가기 좋은 ${mainDish} 중심 메뉴예요.`;
+    return `점심보다 자극을 줄인 ${mainDish} 메뉴라 저녁으로 무난해요.`;
   }
 
   if (transitionFitLabel !== 'weak' && matchedResponses.includes('rice_anchor')) {
-    return `점심 뒤 밥상형 저녁으로 균형을 다시 잡기 좋은 ${mainDish} 중심 메뉴예요.`;
+    return `점심이 한 그릇 메뉴였다면, ${mainDish}처럼 밥 반찬으로 먹기 좋은 메뉴예요.`;
   }
 
   if (transitionFitLabel !== 'weak' && matchedResponses.includes('daily_stabilizer')) {
-    return `점심 흐름 뒤 무난하게 저녁을 정리하기 좋은 ${mainDish} 중심 메뉴예요.`;
+    return `오늘 저녁으로 무난하게 고르기 좋은 ${mainDish} 메뉴예요.`;
   }
 
   if (summary.hasFried && !dinner.attributes.fried) {
-    return `점심의 기름진 흐름을 덜어줄 ${mainDish} 중심 구성이에요.`;
+    return `점심이 기름진 편이어서, ${mainDish}처럼 조금 더 담백한 메뉴예요.`;
   }
 
   if (summary.mealType === 'starch-heavy' && dinner.protein_tags.some((tag) => ['콩/두부', '해산물', '가금류'].includes(tag))) {
-    return `점심보다 단백질 균형을 보완하기 좋은 ${mainDish} 중심 메뉴예요.`;
+    return `점심보다 단백질 균형을 더하기 좋은 ${mainDish} 메뉴예요.`;
   }
 
   if (summary.hasSpicy && !dinner.attributes.spicy) {
-    return `점심보다 자극을 낮춘 ${mainDish} 중심 메뉴라 저녁에 편안하게 이어가기 좋아요.`;
+    return `점심보다 맵지 않게 ${mainDish}로 이어가기 좋아요.`;
   }
 
   if (summary.proteinPreference === 'diverse-protein' && dinner.protein_tags.some((tag) => !summary.proteinTags.includes(tag))) {
-    return `점심과 다른 단백질 흐름을 더해 균형을 맞추기 좋은 ${mainDish} 중심 메뉴예요.`;
+    return `점심과 다른 단백질로 균형을 더하기 좋은 ${mainDish} 메뉴예요.`;
   }
 
   if (summary.isHeavy && dinner.nutrition.calories.avg <= 700) {
-    return `점심보다 무게를 낮춘 ${mainDish} 중심 구성이라 저녁 균형이 좋아요.`;
+    return `점심보다 가볍게 ${mainDish}로 저녁을 챙기기 좋아요.`;
   }
 
-  return `오늘 점심을 바탕으로 ${mainDish} 중심 메뉴를 골랐어요.`;
+  if (['soup_set', 'stew_set', 'noodle_soup_set'].includes(dinner.taxonomy.meal_style)) {
+    return `${mainDish}처럼 국물 있어 편하게 먹기 좋은 메뉴예요.`;
+  }
+
+  if (['main_side_set', 'braised_set'].includes(dinner.taxonomy.meal_style)) {
+    return `${mainDish}처럼 반찬이 함께 있는 한 끼로 고르기 좋아요.`;
+  }
+
+  if (dinner.taxonomy.meal_style === 'one_plate') {
+    return `${mainDish}처럼 한 그릇으로 편하게 먹기 좋은 메뉴예요.`;
+  }
+
+  return `오늘 점심을 참고해 ${mainDish} 메뉴를 골랐어요.`;
 }
 
 export function scoreDinnerCandidate(dinner: ProductionDinner, summary: LunchSignals) {
@@ -633,7 +839,8 @@ export function scoreDinnerCandidate(dinner: ProductionDinner, summary: LunchSig
   return score;
 }
 
-export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRecommendationPayload {
+export function buildFallbackDinnerRecommendations(limit = 3, context?: RecommendationHistoryContext): FallbackDinnerRecommendationPayload {
+  const recentExposureSignals = buildRecentExposureSignals(context?.currentDate ?? '99991231', context);
   const recommendations = selectDiverseRecommendations(
     productionDataset
       .filter((dinner) => dinner.quality.production_ready)
@@ -643,9 +850,10 @@ export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRec
         return left.dinner.nutrition.calories.avg - right.dinner.nutrition.calories.avg;
       }),
     limit,
-    9,
+    18,
     undefined,
-    'fallback',
+    'fallback:v2',
+    recentExposureSignals,
   ).map(({ dinner, score }, index) => ({
       menuId: dinner.menu_id,
       displayName: dinner.display_name,
@@ -663,8 +871,9 @@ export function buildFallbackDinnerRecommendations(limit = 3): FallbackDinnerRec
   };
 }
 
-export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecommendationPayload {
+export function buildDinnerRecommendationPayload(lunch: NeisLunch, context?: RecommendationHistoryContext): DinnerRecommendationPayload {
   const lunchSummary = summarizeLunchSignals(lunch.menuItems);
+  const recentExposureSignals = buildRecentExposureSignals(lunch.date, context);
   const recommendations = selectDiverseRecommendations(
     productionDataset
       .map((dinner) => ({ dinner, score: scoreDinnerCandidate(dinner, lunchSummary) }))
@@ -677,9 +886,10 @@ export function buildDinnerRecommendationPayload(lunch: NeisLunch): DinnerRecomm
       })
       .filter(({ dinner }, index, items) => items.findIndex((item) => item.dinner.canonical_name === dinner.canonical_name) === index),
     3,
-    9,
+    18,
     lunchSummary,
-    lunch.date,
+    `${lunch.date}:${lunch.menuItems.join('|')}`,
+    recentExposureSignals,
   ).map(({ dinner, score }) => ({
       menuId: dinner.menu_id,
       displayName: dinner.display_name,

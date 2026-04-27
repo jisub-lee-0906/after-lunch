@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { appendRecentRecommendationHistory, getScopedRecentRecommendationHistory, type RecentRecommendationExposure } from '@/lib/recommendation-history';
 import { cn } from '@/lib/utils';
 
 type SchoolSearchResult = {
@@ -53,6 +54,8 @@ type RecommendationResponse = {
 
 const dateTabs = [-1, 0, 1] as const;
 const LOCAL_STORAGE_SELECTED_SCHOOL_KEY = 'after-lunch:selected-school';
+const LOCAL_STORAGE_RECOMMENDATION_VIEWER_KEY = 'after-lunch:recommendation-viewer';
+const LOCAL_STORAGE_RECOMMENDATION_HISTORY_KEY = 'after-lunch:recommendation-history';
 
 function formatDateForApi(offsetDays: number) {
   const date = new Date();
@@ -67,6 +70,34 @@ function getDateLabel(offsetDays: number) {
   if (offsetDays === -1) return '어제';
   if (offsetDays === 1) return '내일';
   return '오늘';
+}
+
+function getSchoolScopeKey(school: Pick<SchoolSearchResult, 'officeCode' | 'schoolCode'>) {
+  return `${school.officeCode}:${school.schoolCode}`;
+}
+
+function getOrCreateRecommendationViewerKey() {
+  const storedViewerKey = window.localStorage.getItem(LOCAL_STORAGE_RECOMMENDATION_VIEWER_KEY)?.trim();
+  if (storedViewerKey) return storedViewerKey;
+
+  const viewerKey = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `viewer-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  window.localStorage.setItem(LOCAL_STORAGE_RECOMMENDATION_VIEWER_KEY, viewerKey);
+  return viewerKey;
+}
+
+function readRecentRecommendationHistory() {
+  try {
+    const rawValue = window.localStorage.getItem(LOCAL_STORAGE_RECOMMENDATION_HISTORY_KEY);
+    if (!rawValue) return [] as RecentRecommendationExposure[];
+    return JSON.parse(rawValue) as unknown;
+  } catch {
+    window.localStorage.removeItem(LOCAL_STORAGE_RECOMMENDATION_HISTORY_KEY);
+    return [] as RecentRecommendationExposure[];
+  }
+}
+
+function writeRecentRecommendationHistory(history: RecentRecommendationExposure[]) {
+  window.localStorage.setItem(LOCAL_STORAGE_RECOMMENDATION_HISTORY_KEY, JSON.stringify(history));
 }
 
 export default function Page() {
@@ -177,14 +208,27 @@ export default function Page() {
         setLunchError(null);
         setRecommendationError(null);
         setBridgeComment(null);
-  
+
+        const schoolKey = getSchoolScopeKey(selectedSchool);
+        const userKey = getOrCreateRecommendationViewerKey();
+        const recentHistory = getScopedRecentRecommendationHistory(readRecentRecommendationHistory(), {
+          schoolKey,
+          userKey,
+          currentDate: selectedDate,
+        });
         const response = await fetch(
           '/api/recommendations?officeCode=' +
             encodeURIComponent(selectedSchool.officeCode) +
             '&schoolCode=' +
             encodeURIComponent(selectedSchool.schoolCode) +
             '&date=' +
-            encodeURIComponent(selectedDate),
+            encodeURIComponent(selectedDate) +
+            '&schoolKey=' +
+            encodeURIComponent(schoolKey) +
+            '&userKey=' +
+            encodeURIComponent(userKey) +
+            '&recentHistory=' +
+            encodeURIComponent(JSON.stringify(recentHistory)),
           { signal: controller.signal },
         );
         const payload = (await response.json()) as RecommendationResponse;
@@ -207,6 +251,15 @@ export default function Page() {
         setLunchSummary(payload.lunchSummary ?? null);
         setRecommendations(payload.recommendations ?? []);
         setBridgeComment(payload.bridgeComment ?? null);
+        writeRecentRecommendationHistory(
+          appendRecentRecommendationHistory(readRecentRecommendationHistory(), {
+            schoolKey,
+            userKey,
+            recommendedAt: selectedDate,
+            currentDate: selectedDate,
+            recommendations: payload.recommendations ?? [],
+          }),
+        );
         } catch (error) {
         if ((error as Error).name === 'AbortError') return;
         setLunchData(null);
@@ -240,7 +293,7 @@ export default function Page() {
       <div className="page-stack">
         <header className="surface-card app-header">
           <div className="space-y-1.5">
-            <p className="text-kicker">학교 급식 맞춤형 저녁 추천</p>
+            <p className="text-kicker">오늘 급식을 참고한 저녁 메뉴 추천</p>
             <h1 className="text-display text-[1.78rem] font-bold">{selectedSchool?.schoolName ?? '학교를 설정해보세요'}</h1>
           </div>
           <Button type="button" aria-label="학교 설정" variant="icon" className="icon-button" onClick={() => setIsSettingsOpen(true)}>
@@ -320,8 +373,7 @@ export default function Page() {
 
             <section className="space-y-4">
               <div className="space-y-2">
-                <h2 className="section-heading">오늘 저녁 추천</h2>
-                <p className="section-description">점심 메뉴를 참고해 집에서 부담 없이 준비할 수 있는 저녁 메뉴를 추천해드려요.</p>
+                <h2 className="section-heading">저녁 추천</h2>
               </div>
 
               {isLoadingRecommendations ? (
@@ -338,12 +390,12 @@ export default function Page() {
               ) : (
                 <div className="space-y-3">
                   <Card className="bridge-card">
-                    <div className="bridge-card__content">
-                      <div className="bridge-card__quote-wrap">
-                        <span aria-hidden="true" className="bridge-card__mark">
+                    <div className="bridge-card__content flex flex-col items-center justify-center text-center">
+                      <div className="bridge-card__quote-wrap flex items-start justify-center" style={{ gap: '0.18rem' }}>
+                        <span aria-hidden="true" className="bridge-card__mark" style={{ transform: 'translateY(1px)' }}>
                           “
                         </span>
-                        <p className="bridge-card__quote bridge-card__quote--editorial">
+                        <p className="bridge-card__quote bridge-card__quote--editorial text-center">
                           {bridgeComment}{' '}
                           <span
                             aria-hidden="true"
@@ -361,9 +413,7 @@ export default function Page() {
                       {recommendations.map((recommendation) => (
                         <Card key={recommendation.menuId} className="recommendation-card min-w-[320px] max-w-[360px]">
                           <CardContent className="flex h-full flex-col gap-6 p-7 pt-8">
-                            <div className="space-y-4">
-                              <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
-                            </div>
+                            <p className="text-xl font-semibold leading-8 tracking-[-0.03em] text-slate-950">{recommendation.displayName}</p>
 
                             <a
                               href={recommendation.recipeUrl}

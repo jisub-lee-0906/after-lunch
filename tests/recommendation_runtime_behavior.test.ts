@@ -2,10 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildDinnerRecommendationPayload, buildFallbackDinnerRecommendations, summarizeLunchSignals } from '../lib/dinner-engine';
+import { appendRecentRecommendationHistory, getScopedRecentRecommendationHistory } from '../lib/recommendation-history';
 import { GET as schoolsGET } from '../app/api/schools/route';
 import { GET as lunchGET } from '../app/api/lunch/route';
 import { GET as recommendationsGET } from '../app/api/recommendations/route';
 import { cleanDishName } from '../lib/neis';
+
+const soupKeywords = ['국', '탕', '찌개', '수제비', '쌀국수', '순두부', '미역국', '된장국'];
+const starchKeywords = ['볶음밥', '짜장', '카레', '파스타', '스파게티', '떡볶이', '덮밥', '비빔밥', '쫄면'];
+
+function classifyDinnerCategory(name: string) {
+  if (soupKeywords.some((keyword) => name.includes(keyword))) return 'soup';
+  if (starchKeywords.some((keyword) => name.includes(keyword))) return 'starch';
+  return 'balanced';
+}
+
+function classifyPerceivedRepeatCluster(name: string) {
+  if (/순두부|두부조림|연두부|두부양념조림/.test(name)) return 'tofu';
+  if (/된장국|된장찌개/.test(name)) return 'doenjang';
+  if (/미역국/.test(name)) return 'miyeok';
+  if (/장조림/.test(name)) return 'jangjorim';
+  if (/불고기/.test(name)) return 'bulgogi';
+  if (/볶음밥|덮밥|비빔밥|카레|짜장/.test(name)) return 'oneplate';
+  if (/국|탕|찌개|수제비/.test(name)) return 'broth';
+  return 'other';
+}
 
 test('summarizeLunchSignals detects rice_missing from one-plate lunch text', () => {
   const summary = summarizeLunchSignals(['참치마요덮밥', '배추김치']);
@@ -16,6 +37,52 @@ test('summarizeLunchSignals detects rice_missing from one-plate lunch text', () 
 test('cleanDishName strips trailing single-letter Latin suffix noise from NEIS menu names', () => {
   assert.equal(cleanDishName('돈까스-J'), '돈까스');
   assert.equal(cleanDishName('비빔밥-M'), '비빔밥');
+});
+
+test('getScopedRecentRecommendationHistory keeps only same-school same-user recent cache entries', () => {
+  const scoped = getScopedRecentRecommendationHistory(
+    [
+      { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250423', menuId: 'menu-a' },
+      { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250419', menuId: 'menu-b' },
+      { schoolKey: 'J10:7751396', userKey: 'other-user', recommendedAt: '20250423', menuId: 'menu-c' },
+      { schoolKey: 'OTHER:9999999', userKey: 'user-1', recommendedAt: '20250423', menuId: 'menu-d' },
+      { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: 'bad-date', menuId: 'menu-e' },
+    ],
+    {
+      schoolKey: 'J10:7751396',
+      userKey: 'user-1',
+      currentDate: '20250424',
+    },
+  );
+
+  assert.deepEqual(scoped, [{ schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250423', menuId: 'menu-a' }]);
+});
+
+test('appendRecentRecommendationHistory dedupes same-day cache entries and drops expired cache rows', () => {
+  const nextHistory = appendRecentRecommendationHistory(
+    [
+      { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250418', menuId: 'expired-menu' },
+      { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250424', menuId: 'menu-a' },
+      { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250424', menuId: 'menu-a' },
+    ],
+    {
+      schoolKey: 'J10:7751396',
+      userKey: 'user-1',
+      recommendedAt: '20250424',
+      currentDate: '20250424',
+      recommendations: [
+        { menuId: 'menu-a' },
+        { menuId: 'menu-b' },
+        { menuId: 'menu-c' },
+      ],
+    },
+  );
+
+  assert.deepEqual(nextHistory, [
+    { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250424', menuId: 'menu-a' },
+    { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250424', menuId: 'menu-b' },
+    { schoolKey: 'J10:7751396', userKey: 'user-1', recommendedAt: '20250424', menuId: 'menu-c' },
+  ]);
 });
 
 test('buildDinnerRecommendationPayload returns three deduped recommendations with non-empty reasons', () => {
@@ -33,6 +100,23 @@ test('buildDinnerRecommendationPayload returns three deduped recommendations wit
     assert.ok(recommendation.reason.length > 0);
     assert.ok(recommendation.recipeUrl.startsWith('https://www.10000recipe.com/recipe/list.html?q='));
   }
+});
+
+test('buildDinnerRecommendationPayload uses the full combined recommendation name for recipe search when the menu is a combo set', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 680,
+    menuItems: ['참치마요덮밥', '배추김치'],
+    rawMenu: '참치마요덮밥<br/>배추김치',
+  });
+
+  const comboRecommendation = payload.recommendations.find((item) => /[와과].+정식/.test(item.displayName));
+  assert.ok(comboRecommendation, 'expected at least one combo recommendation');
+  const expectedQuery = encodeURIComponent(comboRecommendation.displayName.replace(/\s*정식$/, ''));
+  assert.ok(
+    comboRecommendation.recipeUrl.includes(`q=${expectedQuery}`),
+    `expected combo recipe query to use full display name, got ${comboRecommendation.recipeUrl}`,
+  );
 });
 
 test('buildDinnerRecommendationPayload derives persuasive density and summary labels for fried spicy lunches', () => {
@@ -83,7 +167,24 @@ test('buildDinnerRecommendationPayload derives lighter labels for very simple lu
 
   assert.equal(payload.lunchSummary.densityLabel, '가벼운 구성');
   assert.equal(payload.lunchSummary.summaryLabel, '자극이 적은 편');
-  assert.equal(payload.bridgeComment, '오늘 점심이 비교적 가벼운 편이라, 저녁은 부담 없이 준비해 먹을 수 있는 메뉴로 골랐어요.');
+  assert.equal(payload.bridgeComment, '오늘 점심이 비교적 가벼워서, 저녁은 편하게 먹기 좋은 메뉴로 골랐어요.');
+});
+
+test('buildDinnerRecommendationPayload uses meal-style-based fallback reasons for lighter lunches', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 520,
+    menuItems: ['맑은두부국', '계란찜', '오이무침'],
+    rawMenu: '맑은두부국<br/>계란찜<br/>오이무침',
+  });
+
+  const categories = payload.recommendations.map((item) => classifyDinnerCategory(item.displayName));
+  assert.ok(categories.includes('soup'));
+  assert.ok(categories.includes('balanced'));
+  assert.ok(new Set(categories).size >= 2);
+  for (const recommendation of payload.recommendations) {
+    assert.match(recommendation.reason, /편하게 먹기 좋은 메뉴예요|한 끼로 고르기 좋아요/);
+  }
 });
 
 test('buildDinnerRecommendationPayload interprets whole-menu weight before picking persuasive summary labels', () => {
@@ -257,10 +358,166 @@ test('buildDinnerRecommendationPayload interprets whole-menu weight before picki
   }
 });
 
-test('buildFallbackDinnerRecommendations returns three recommendations', () => {
+test('buildDinnerRecommendationPayload avoids collapsing top-3 into a single perceived similarity cluster for fried spicy lunches', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 820,
+    menuItems: ['돈까스', '떡볶이', '배추김치'],
+    rawMenu: '돈까스<br/>떡볶이<br/>배추김치',
+  });
+
+  const clusters = payload.recommendations.map((item) => classifyPerceivedRepeatCluster(item.displayName));
+  assert.ok(new Set(clusters).size >= 2, `expected at least two perceived clusters, got ${clusters.join(', ')}`);
+});
+
+test('buildDinnerRecommendationPayload avoids using the same perceived cluster for both top picks on one-plate lunches when the shortlist has alternatives', () => {
+  const payload = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 680,
+    menuItems: ['참치마요덮밥', '배추김치'],
+    rawMenu: '참치마요덮밥<br/>배추김치',
+  });
+
+  const top2Clusters = payload.recommendations.slice(0, 2).map((item) => classifyPerceivedRepeatCluster(item.displayName));
+  assert.notEqual(top2Clusters[0], top2Clusters[1], `expected top2 clusters to differ, got ${top2Clusters.join(', ')}`);
+});
+
+test('buildDinnerRecommendationPayload does not return the exact same top-3 set for soup-style and one-plate lunches on the same date', () => {
+  const soupLunch = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 610,
+    menuItems: ['쌀밥', '닭곰탕', '시금치나물', '깍두기'],
+    rawMenu: '쌀밥<br/>닭곰탕<br/>시금치나물<br/>깍두기',
+  });
+  const onePlateLunch = buildDinnerRecommendationPayload({
+    date: '20250424',
+    calories: 680,
+    menuItems: ['참치마요덮밥', '배추김치'],
+    rawMenu: '참치마요덮밥<br/>배추김치',
+  });
+
+  assert.notDeepEqual(
+    soupLunch.recommendations.map((item) => item.displayName),
+    onePlateLunch.recommendations.map((item) => item.displayName),
+  );
+});
+
+test('buildDinnerRecommendationPayload rotates top1 away from a same-school same-user recent repeat cluster', () => {
+  const lunch = {
+    date: '20250424',
+    calories: 610,
+    menuItems: ['쌀밥', '닭곰탕', '시금치나물', '깍두기'],
+    rawMenu: '쌀밥<br/>닭곰탕<br/>시금치나물<br/>깍두기',
+  };
+
+  const baseline = buildDinnerRecommendationPayload(lunch);
+  const repeatedTopPick = baseline.recommendations[0];
+
+  const rotated = buildDinnerRecommendationPayload(lunch, {
+    schoolKey: 'J10:7751396',
+    userKey: 'user-1',
+    recentExposureHistory: [
+      {
+        schoolKey: 'J10:7751396',
+        userKey: 'user-1',
+        recommendedAt: '20250423',
+        menuId: repeatedTopPick.menuId,
+      },
+      {
+        schoolKey: 'J10:7751396',
+        userKey: 'user-1',
+        recommendedAt: '20250422',
+        menuId: repeatedTopPick.menuId,
+      },
+      {
+        schoolKey: 'J10:7751396',
+        userKey: 'user-1',
+        recommendedAt: '20250421',
+        menuId: repeatedTopPick.menuId,
+      },
+    ],
+  });
+
+  assert.notEqual(rotated.recommendations[0]?.menuId, repeatedTopPick.menuId);
+});
+
+test('buildDinnerRecommendationPayload keeps rotating top1 across repeated same-day exposures instead of collapsing onto one sink menu', () => {
+  const lunch = {
+    date: '20250424',
+    calories: 610,
+    menuItems: ['쌀밥', '닭곰탕', '시금치나물', '깍두기'],
+    rawMenu: '쌀밥<br/>닭곰탕<br/>시금치나물<br/>깍두기',
+  };
+
+  let history: Array<{ schoolKey: string; userKey: string; recommendedAt: string; menuId: string }> = [];
+  const top1History: string[] = [];
+
+  for (let index = 0; index < 4; index += 1) {
+    const payload = buildDinnerRecommendationPayload(lunch, {
+      schoolKey: 'J10:7751396',
+      userKey: 'user-1',
+      currentDate: '20250424',
+      recentExposureHistory: history,
+    });
+
+    top1History.push(payload.recommendations[0]?.displayName ?? '');
+    history = appendRecentRecommendationHistory(history, {
+      schoolKey: 'J10:7751396',
+      userKey: 'user-1',
+      recommendedAt: '20250424',
+      currentDate: '20250424',
+      recommendations: payload.recommendations,
+    });
+  }
+
+  assert.equal(new Set(top1History).size, top1History.length);
+});
+
+test('buildDinnerRecommendationPayload only uses recent history from the same school and same user', () => {
+  const lunch = {
+    date: '20250424',
+    calories: 610,
+    menuItems: ['쌀밥', '닭곰탕', '시금치나물', '깍두기'],
+    rawMenu: '쌀밥<br/>닭곰탕<br/>시금치나물<br/>깍두기',
+  };
+
+  const baseline = buildDinnerRecommendationPayload(lunch);
+  const repeatedTopPick = baseline.recommendations[0];
+
+  const ignoredHistory = buildDinnerRecommendationPayload(lunch, {
+    schoolKey: 'J10:7751396',
+    userKey: 'user-1',
+    recentExposureHistory: [
+      {
+        schoolKey: 'J10:7751396',
+        userKey: 'other-user',
+        recommendedAt: '20250423',
+        menuId: repeatedTopPick.menuId,
+      },
+      {
+        schoolKey: 'OTHER:9999999',
+        userKey: 'user-1',
+        recommendedAt: '20250422',
+        menuId: repeatedTopPick.menuId,
+      },
+      {
+        schoolKey: 'J10:7751396',
+        userKey: 'user-1',
+        recommendedAt: '20250410',
+        menuId: repeatedTopPick.menuId,
+      },
+    ],
+  });
+
+  assert.equal(ignoredHistory.recommendations[0]?.menuId, repeatedTopPick.menuId);
+});
+
+test('buildFallbackDinnerRecommendations returns three recommendations with at least two dinner categories', () => {
   const payload = buildFallbackDinnerRecommendations();
   assert.equal(payload.recommendations.length, 3);
   assert.ok(payload.bridgeComment.length > 0);
+  const categories = payload.recommendations.map((item) => classifyDinnerCategory(item.displayName));
+  assert.ok(new Set(categories).size >= 2, `expected at least two categories, got ${categories.join(', ')}`);
 });
 
 test('schools route returns empty schools list for blank query', async () => {

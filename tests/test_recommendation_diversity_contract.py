@@ -18,7 +18,11 @@ class RecommendationDiversityContractTests(unittest.TestCase):
             'candidatePoolSize',
             'dinner.protein_tags.some',
             'SOUP_KEYWORDS.some',
-            '추천 다양성',
+            '점수제는 유지하되',
+            'selectionBaseScore',
+            'forcedNewCategoryPick',
+            'forcedNewProteinPick',
+            'getPreferredFirstPickCategories',
         ]
         for item in required_strings:
             self.assertIn(item, content)
