@@ -10,7 +10,7 @@ import calendar
 @dataclass(frozen=True)
 class NationwidePipelineConfig:
     year: int = 2025
-    root_dir: Path = Path('/home/jisub-lee/workspace/after-lunch')
+    root_dir: Path = Path(__file__).resolve().parent.parent
 
 
 def build_year_date_bounds(year: int) -> tuple[str, str]:

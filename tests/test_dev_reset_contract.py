@@ -12,7 +12,7 @@ class DevResetContractTests(unittest.TestCase):
         content = package_path.read_text(encoding='utf-8')
 
         self.assertIn('"dev:reset"', content)
-        self.assertIn('bash ./scripts/dev-reset.sh', content)
+        self.assertIn('node ./scripts/dev-reset.mjs', content)
 
 
 if __name__ == '__main__':

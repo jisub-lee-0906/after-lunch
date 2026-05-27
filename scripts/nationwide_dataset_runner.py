@@ -21,7 +21,7 @@ from scripts.app_seed_dedupe import dedupe_rows
 
 @dataclass(frozen=True)
 class NationwideRunConfig:
-    root_dir: Path = Path('/home/jisub-lee/workspace/after-lunch')
+    root_dir: Path = Path(__file__).resolve().parent.parent
     year: int = 2025
     sample_rows: int | None = 1000
 

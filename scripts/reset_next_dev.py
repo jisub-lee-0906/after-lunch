@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import os
+import platform
 import shutil
 import signal
 import socket
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -10,7 +14,8 @@ from pathlib import Path
 from typing import Iterable
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-NEXT_BIN = PROJECT_ROOT / 'node_modules/.bin/next'
+IS_WINDOWS = os.name == 'nt'
+NEXT_BIN = PROJECT_ROOT / ('node_modules/.bin/next.cmd' if IS_WINDOWS else 'node_modules/.bin/next')
 NEXT_DIR = PROJECT_ROOT / '.next'
 HOST = '127.0.0.1'
 PORT = 3000
@@ -42,19 +47,17 @@ def read_process_info(pid: int) -> ProcessInfo | None:
         ppid, pgid = parse_stat_fields(stat_text)
         command = (proc_dir / 'cmdline').read_bytes().replace(b'\x00', b' ').decode('utf-8', 'ignore').strip()
         cwd = os.readlink(proc_dir / 'cwd')
-        return ProcessInfo(
-            pid=pid,
-            ppid=ppid,
-            pgid=pgid,
-            cwd=cwd,
-            command=command,
-        )
+        return ProcessInfo(pid=pid, ppid=ppid, pgid=pgid, cwd=cwd, command=command)
     except (FileNotFoundError, ProcessLookupError, PermissionError, OSError, ValueError):
         return None
 
 
 def iter_project_next_processes() -> Iterable[ProcessInfo]:
+    if IS_WINDOWS:
+        return []
+
     project_root = str(PROJECT_ROOT)
+    matches: list[ProcessInfo] = []
     for entry in Path('/proc').iterdir():
         if not entry.name.isdigit():
             continue
@@ -64,15 +67,16 @@ def iter_project_next_processes() -> Iterable[ProcessInfo]:
         if info.cwd != project_root:
             continue
         command = info.command
-        if not command:
-            continue
-        if 'reset_next_dev.py' in command:
+        if not command or 'reset_next_dev.py' in command:
             continue
         if command.startswith(f'node {NEXT_BIN}') or command.startswith(str(NEXT_BIN)) or command.startswith('next-server (v'):
-            yield info
+            matches.append(info)
+    return matches
 
 
 def list_target_groups() -> list[int]:
+    if IS_WINDOWS:
+        return []
     own_pid = os.getpid()
     own_pgid = os.getpgid(0)
     groups = set()
@@ -83,6 +87,27 @@ def list_target_groups() -> list[int]:
     return sorted(groups)
 
 
+def pids_listening_on_port_windows(port: int) -> list[int]:
+    cmd = ['netstat', '-ano', '-p', 'tcp']
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    pids: set[int] = set()
+    suffix = f':{port}'
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 5:
+            continue
+        local_addr = parts[1]
+        state = parts[3].upper()
+        pid_text = parts[4]
+        if not local_addr.endswith(suffix):
+            continue
+        if state != 'LISTENING':
+            continue
+        if pid_text.isdigit():
+            pids.add(int(pid_text))
+    return sorted(pids)
+
+
 def is_port_open() -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(0.2)
@@ -90,6 +115,8 @@ def is_port_open() -> bool:
 
 
 def wait_for_process_exit(timeout_seconds: float) -> bool:
+    if IS_WINDOWS:
+        return True
     deadline = time.time() + timeout_seconds
     while time.time() < deadline:
         if not list(iter_project_next_processes()):
@@ -115,6 +142,11 @@ def terminate_existing_groups(sig: int) -> None:
             continue
 
 
+def terminate_port_owners_windows() -> None:
+    for pid in pids_listening_on_port_windows(PORT):
+        subprocess.run(['taskkill', '/PID', str(pid), '/T', '/F'], check=False, capture_output=True, text=True)
+
+
 def clean_next_artifacts() -> None:
     if NEXT_DIR.exists():
         shutil.rmtree(NEXT_DIR)
@@ -136,18 +168,24 @@ def ensure_next_binary_exists() -> None:
 def main() -> None:
     ensure_next_binary_exists()
 
-    terminate_existing_groups(signal.SIGTERM)
-    wait_for_process_exit(SHUTDOWN_TIMEOUT_SECONDS)
-    wait_for_port_release(SHUTDOWN_TIMEOUT_SECONDS)
+    if IS_WINDOWS:
+        terminate_port_owners_windows()
+        if not wait_for_port_release(SHUTDOWN_TIMEOUT_SECONDS):
+            print(f'Port {PORT} is still in use.', file=sys.stderr)
+            raise SystemExit(1)
+    else:
+        terminate_existing_groups(signal.SIGTERM)
+        wait_for_process_exit(SHUTDOWN_TIMEOUT_SECONDS)
+        wait_for_port_release(SHUTDOWN_TIMEOUT_SECONDS)
 
-    if list(iter_project_next_processes()) or is_port_open():
-        terminate_existing_groups(signal.SIGKILL)
-        if not wait_for_process_exit(3.0):
-            print('Failed to stop existing Next.js processes for this project.', file=sys.stderr)
-            raise SystemExit(1)
-        if not wait_for_port_release(3.0):
-            print(f'Port {PORT} is still in use after killing existing Next.js processes.', file=sys.stderr)
-            raise SystemExit(1)
+        if list(iter_project_next_processes()) or is_port_open():
+            terminate_existing_groups(signal.SIGKILL)
+            if not wait_for_process_exit(3.0):
+                print('Failed to stop existing Next.js processes for this project.', file=sys.stderr)
+                raise SystemExit(1)
+            if not wait_for_port_release(3.0):
+                print(f'Port {PORT} is still in use after killing existing Next.js processes.', file=sys.stderr)
+                raise SystemExit(1)
 
     clean_next_artifacts()
     start_next_dev()

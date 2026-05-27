@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "dev:reset": "bash ./scripts/dev-reset.sh",
+    "dev:reset": "node ./scripts/dev-reset.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
