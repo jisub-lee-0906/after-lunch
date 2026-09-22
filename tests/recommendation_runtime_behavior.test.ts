@@ -599,3 +599,52 @@ test('recommendations route returns 400 for invalid date format', async () => {
   const data = await response.json();
   assert.equal(typeof data.error, 'string');
 });
+
+import { searchSchools, __resetNeisCacheForTests } from '../lib/neis';
+import { __resetRequestSecurityForTests, parseRecentHistory } from '../lib/request-security';
+
+test('NEIS failures return a safe error and do not expose upstream details', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.NEIS_API_KEY;
+  process.env.NEIS_API_KEY = 'test-key';
+  __resetNeisCacheForTests();
+  globalThis.fetch = async () => { throw new Error('upstream token=secret internal host'); };
+  await assert.rejects(() => searchSchools('테스트학교'), { message: 'NEIS is unavailable' });
+  globalThis.fetch = originalFetch;
+  if (originalKey === undefined) delete process.env.NEIS_API_KEY; else process.env.NEIS_API_KEY = originalKey;
+});
+
+test('NEIS cache coalesces identical in-flight school searches', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.NEIS_API_KEY;
+  process.env.NEIS_API_KEY = 'test-key';
+  __resetNeisCacheForTests();
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ schoolInfo: [{ row: [{ ATPT_OFCDC_SC_CODE: 'C10', ATPT_OFCDC_SC_NM: '서울', SD_SCHUL_CODE: '7201268', SCHUL_NM: '테스트', SCHUL_KND_SC_NM: '고등학교' }] }] }));
+  };
+  const [first, second] = await Promise.all([searchSchools('테스트학교'), searchSchools('테스트학교')]);
+  assert.equal(calls, 1);
+  assert.deepEqual(first, second);
+  globalThis.fetch = originalFetch;
+  if (originalKey === undefined) delete process.env.NEIS_API_KEY; else process.env.NEIS_API_KEY = originalKey;
+});
+
+test('recent history enforces byte, entry, and string bounds', () => {
+  assert.deepEqual(parseRecentHistory('x'.repeat(4097)), []);
+  assert.deepEqual(parseRecentHistory(JSON.stringify(Array.from({ length: 31 }, () => ({ schoolKey: 'C10:1', userKey: 'u', recommendedAt: '20250424', menuId: 'm' })))), []);
+  assert.deepEqual(parseRecentHistory(JSON.stringify([{ schoolKey: 'x'.repeat(65), userKey: 'u', recommendedAt: '20250424', menuId: 'm' }])), []);
+});
+
+test('routes reject oversized inputs and rate limit without trusting spoofed XFF', async () => {
+  __resetRequestSecurityForTests();
+  const oversized = { nextUrl: new URL(`http://localhost:3000/api/schools?query=${'가'.repeat(81)}`), headers: new Headers({ 'x-forwarded-for': '198.51.100.1' }), url: `http://localhost:3000/api/schools?query=${'가'.repeat(81)}` };
+  const invalid = await schoolsGET(oversized as never);
+  assert.equal(invalid.status, 400);
+  const request = { nextUrl: new URL('http://localhost:3000/api/schools?query='), headers: new Headers({ 'x-forwarded-for': '203.0.113.1' }), url: 'http://localhost:3000/api/schools?query=' };
+  for (let index = 0; index < 29; index += 1) assert.equal((await schoolsGET(request as never)).status, 200);
+  const limited = await schoolsGET({ ...request, headers: new Headers({ 'x-forwarded-for': '198.51.100.2' }) } as never);
+  assert.equal(limited.status, 429);
+  __resetRequestSecurityForTests();
+});

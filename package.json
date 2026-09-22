@@ -9,13 +9,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test:runtime": "tsx --test tests/recommendation_runtime_behavior.test.ts",
+    "test:runtime": "node --import tsx --test tests/recommendation_runtime_behavior.test.ts",
     "verify:deploy": "npm run lint && npm run test:runtime && python3 -m unittest discover -s tests -p 'test_*.py' -v && npm run build"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",
     "lucide-react": "^1.11.0",
-    "next": "^16.2.4",
+    "next": "16.3.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
@@ -24,12 +24,12 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.0",
-    "postcss": "^8.5.10",
+    "postcss": "8.5.23",
     "tailwindcss": "^4.2.4",
     "tsx": "^4.20.6",
     "typescript": "^6.0.3"
   },
   "overrides": {
-    "postcss": "^8.5.10"
+    "postcss": "8.5.23"
   }
 }
