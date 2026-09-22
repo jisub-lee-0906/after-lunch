@@ -62,12 +62,12 @@ def main() -> None:
     output_path = dataset_dir / 'app_seed_ultra_curated_2025.json'
     report_path = dataset_dir / 'app_seed_ultra_curated_2025_report.json'
 
-    rows = json.loads(input_path.read_text())
+    rows = json.loads(input_path.read_text(encoding='utf-8'))
     ultra_rows = ultra_curate_rows(rows, min_occurrence=DEFAULT_MIN_OCCURRENCE)
     report = build_report(rows, ultra_rows, min_occurrence=DEFAULT_MIN_OCCURRENCE)
 
-    output_path.write_text(json.dumps(ultra_rows, ensure_ascii=False, indent=2) + '\n')
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    output_path.write_text(json.dumps(ultra_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
 if __name__ == '__main__':

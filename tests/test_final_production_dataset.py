@@ -17,6 +17,7 @@ from scripts.final_production_dataset import (
     classify_meal_style,
     is_production_ready_row,
     is_stable_operational_row,
+    OVERRIDE_PATH,
     load_manual_taxonomy_overrides,
     load_source_rows,
     resolve_pipeline_paths,
@@ -233,6 +234,7 @@ class FinalProductionDatasetTests(unittest.TestCase):
         self.assertEqual(record['quality']['school_level_coverage'], 3)
         self.assertEqual(record['quality']['calorie_profile'], 'stable')
 
+    @unittest.skipUnless(OVERRIDE_PATH.exists(), 'optional ignored manual taxonomy overrides are not present')
     def test_manual_taxonomy_override_file_loads_known_rows(self):
         overrides = load_manual_taxonomy_overrides()
         self.assertEqual(len(overrides), 622)
@@ -530,6 +532,7 @@ class FinalProductionDatasetTests(unittest.TestCase):
         self.assertIsInstance(first_row['bridge_tags'], list)
         self.assertIsInstance(first_row['dinner_response'], list)
 
+    @unittest.skipUnless((Path(__file__).resolve().parents[1] / 'datasets' / '2025' / 'production_final_dataset_2025_report.json').exists(), 'optional ignored production report is not present')
     def test_shipped_production_report_samples_match_current_record_schema(self):
         report_path = Path(__file__).resolve().parents[1] / 'datasets' / '2025' / 'production_final_dataset_2025_report.json'
         report = json.loads(report_path.read_text(encoding='utf-8'))

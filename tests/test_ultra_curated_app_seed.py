@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -91,7 +92,7 @@ class UltraCuratedAppSeedTests(unittest.TestCase):
         input_path.write_text(json.dumps(input_rows, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         try:
             result = subprocess.run(
-                ['python3', 'scripts/ultra_curated_app_seed.py'],
+                [sys.executable, 'scripts/ultra_curated_app_seed.py'],
                 cwd=repo_root,
                 capture_output=True,
                 text=True,
